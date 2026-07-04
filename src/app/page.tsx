@@ -9,8 +9,11 @@ import { UploadModal } from "@/components/reelwrite/UploadModal";
 import { DiscoverView } from "@/components/reelwrite/DiscoverView";
 import { ProfileView } from "@/components/reelwrite/ProfileView";
 import { AdminView } from "@/components/reelwrite/AdminView";
+import { LandingView } from "@/components/reelwrite/LandingView";
+import { ShareSheet } from "@/components/reelwrite/ShareSheet";
 import type { ReelWithRelations } from "@/components/reelwrite/ReelCard";
 import { useToast } from "@/hooks/use-toast";
+import { Sparkles } from "lucide-react";
 
 interface Me {
   id: string;
@@ -21,6 +24,8 @@ interface Me {
   role: string;
 }
 
+const LANDING_KEY = "reelwrite:entered";
+
 export default function Home() {
   const [me, setMe] = useState<Me | null>(null);
   const [view, setView] = useState<BottomNavView>("feed");
@@ -29,9 +34,24 @@ export default function Home() {
   const [loadingReels, setLoadingReels] = useState(true);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [commentsReel, setCommentsReel] = useState<ReelWithRelations | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareReel, setShareReel] = useState<ReelWithRelations | null>(null);
   const [profileWriterId, setProfileWriterId] = useState<string | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
+  // Landing page: show on first visit (or until the user dismisses it)
+  const [showLanding, setShowLanding] = useState(true);
   const { toast } = useToast();
+
+  // Check localStorage on mount — if the user has already entered, skip landing
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(LANDING_KEY) === "1") {
+        setShowLanding(false);
+      }
+    } catch {
+      // localStorage might be unavailable; keep landing shown
+    }
+  }, []);
 
   // Get-or-create the demo current user
   useEffect(() => {
@@ -108,20 +128,21 @@ export default function Home() {
     setView("profile");
   }
 
-  function handleShare(reelId: string) {
-    fetch(`/api/reels/${reelId}/share`, { method: "POST" })
+  function handleShare(reel: ReelWithRelations) {
+    // Increment share counter in the background
+    fetch(`/api/reels/${reel.id}/share`, { method: "POST" })
       .then((r) => r.json())
       .then(() => {
         setReels((prev) =>
           prev.map((r) =>
-            r.id === reelId ? { ...r, shares: r.shares + 1 } : r
+            r.id === reel.id ? { ...r, shares: r.shares + 1 } : r
           )
         );
-        toast({
-          title: "Link copied to clipboard",
-          description: "Share your reel anywhere — readers tap, books sell.",
-        });
-      });
+      })
+      .catch(() => {});
+    // Open the share sheet
+    setShareReel(reel);
+    setShareOpen(true);
   }
 
   function handleSave(reelId: string) {
@@ -143,18 +164,57 @@ export default function Home() {
   }
   function handleEditBio(newBio: string) {
     if (!me) return;
-    // For demo, just toast; persisting would require an update endpoint
     toast({
       title: "Bio updated",
       description: newBio.slice(0, 60) + (newBio.length > 60 ? "…" : ""),
     });
   }
 
+  function enterApp() {
+    try {
+      localStorage.setItem(LANDING_KEY, "1");
+    } catch {
+      // ignore
+    }
+    setShowLanding(false);
+  }
+
+  function reopenLanding() {
+    setShowLanding(true);
+  }
+
   // Determine which profile to show
   const profileId = profileWriterId || me?.id;
 
+  // LANDING VIEW — full-screen, shown on first visit
+  if (showLanding) {
+    return (
+      <main className="relative h-[100dvh] w-full overflow-hidden bg-[#0a0a0a]">
+        <LandingView onEnter={enterApp} />
+        {/* Small "skip" link in the corner for returning users */}
+        <button
+          onClick={enterApp}
+          className="absolute top-4 right-4 z-50 text-[11px] text-white/40 hover:text-white/70 transition-colors"
+          aria-label="Skip and enter the app"
+        >
+          Skip →
+        </button>
+      </main>
+    );
+  }
+
   return (
     <main className="relative h-[100dvh] w-full overflow-hidden bg-[#0a0a0a]">
+      {/* Floating "About" button to reopen the landing page */}
+      <button
+        onClick={reopenLanding}
+        className="absolute top-3 right-3 z-40 flex items-center gap-1 rounded-full bg-black/50 backdrop-blur-md border border-white/10 px-2.5 py-1 text-[10px] font-semibold text-white/70 hover:text-amber-400 hover:border-amber-400/40 transition-colors"
+        aria-label="About ReelWrite"
+      >
+        <Sparkles className="w-3 h-3" />
+        About
+      </button>
+
       {/* FEED view */}
       {view === "feed" && (
         <>
@@ -254,6 +314,13 @@ export default function Home() {
         open={commentsOpen}
         onOpenChange={setCommentsOpen}
         currentUserId={me?.id || ""}
+      />
+
+      {/* Share sheet (QR code + downloadable card) */}
+      <ShareSheet
+        reel={shareReel}
+        open={shareOpen}
+        onOpenChange={setShareOpen}
       />
     </main>
   );

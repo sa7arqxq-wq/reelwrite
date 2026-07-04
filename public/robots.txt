@@ -1,14 +1,7 @@
-User-agent: Googlebot
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
-
+# ReelWrite robots.txt
+# Allow all crawlers full access
 User-agent: *
 Allow: /
+
+# Sitemap location
+Sitemap: https://reelwrite.app/sitemap.xml

@@ -10,7 +10,7 @@ interface ReelFeedProps {
   onLike: (reelId: string, liked: boolean) => void;
   onOpenComments: (reel: ReelWithRelations) => void;
   onOpenProfile: (writerId: string) => void;
-  onShare: (reelId: string) => void;
+  onShare: (reel: ReelWithRelations) => void;
   onSave: (reelId: string) => void;
   loading?: boolean;
 }

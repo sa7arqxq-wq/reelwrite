@@ -1,7 +1,21 @@
+/*
+ * ReelWrite — 7-second reels for writers
+ * Copyright (c) 2026 ReelWrite. All rights reserved.
+ *
+ * PROPRIETARY AND CONFIDENTIAL
+ * This source code is the proprietary work of ReelWrite. No part of this
+ * software may be copied, reproduced, distributed, or used to create
+ * derivative works without the express written permission of ReelWrite.
+ * Unauthorized use, duplication, or distribution is prohibited.
+ *
+ * For licensing inquiries: legal@reelwrite.app
+ */
+
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
+import { CopyProtection } from "@/components/reelwrite/CopyProtection";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -124,6 +138,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#0a0a0a] text-[#fafaf9]`}
       >
+        <CopyProtection />
         {children}
         <Toaster />
       </body>

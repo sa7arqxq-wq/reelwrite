@@ -1,5 +1,28 @@
+/*
+ * ReelWrite — 7-second reels for writers
+ * Copyright (c) 2026 ReelWrite. All rights reserved.
+ *
+ * PROPRIETARY AND CONFIDENTIAL
+ * This source code is the proprietary work of ReelWrite. No part of this
+ * software may be copied, reproduced, distributed, or used to create
+ * derivative works without the express written permission of ReelWrite.
+ * Unauthorized use, duplication, or distribution is prohibited.
+ *
+ * For licensing inquiries: legal@reelwrite.app
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import {
+  validateId,
+  validateHook,
+  validateCaption,
+  validateMood,
+  validateBookTitle,
+  validateGenre,
+  validateUrl,
+  sanitizeText,
+} from "@/lib/validation";
 
 // POST /api/reels/upload
 // body: { authorId, bookId?, hook, caption, mood, duration, bookTitle?, bookGenre?, bookLink? }
@@ -19,12 +42,70 @@ export async function POST(req: NextRequest) {
     bookLink,
   } = body;
 
-  if (!authorId || !hook?.trim()) {
-    return NextResponse.json({ error: "authorId and hook required" }, { status: 400 });
+  // Validate authorId
+  const authorIdV = validateId(authorId);
+  if (!authorIdV.ok) {
+    return NextResponse.json({ error: authorIdV.error }, { status: 400 });
+  }
+  // Confirm the author exists
+  const author = await db.user.findUnique({ where: { id: authorIdV.value } });
+  if (!author) {
+    return NextResponse.json({ error: "Author not found" }, { status: 404 });
+  }
+  if (author.banned) {
+    return NextResponse.json({ error: "Account is banned" }, { status: 403 });
+  }
+
+  // Validate hook
+  const hookV = validateHook(hook);
+  if (!hookV.ok) {
+    return NextResponse.json({ error: hookV.error }, { status: 400 });
+  }
+
+  // Validate caption (optional)
+  const captionV = validateCaption(caption);
+  if (!captionV.ok) {
+    return NextResponse.json({ error: captionV.error }, { status: 400 });
+  }
+
+  // Validate mood
+  const moodV = validateMood(mood);
+  if (!moodV.ok) {
+    return NextResponse.json({ error: moodV.error }, { status: 400 });
+  }
+
+  // Validate optional bookId
+  let resolvedBookId: string | null = null;
+  if (bookId) {
+    const bookIdV = validateId(bookId);
+    if (!bookIdV.ok) {
+      return NextResponse.json({ error: bookIdV.error }, { status: 400 });
+    }
+    resolvedBookId = bookIdV.value;
+  }
+
+  // Validate optional book fields
+  let validatedBookTitle: string | null = null;
+  let validatedBookGenre = "Fiction";
+  let validatedBookLink = "";
+  if (bookTitle) {
+    const btV = validateBookTitle(bookTitle);
+    if (!btV.ok) return NextResponse.json({ error: btV.error }, { status: 400 });
+    validatedBookTitle = btV.value;
+  }
+  if (bookGenre) {
+    const bgV = validateGenre(bookGenre);
+    if (!bgV.ok) return NextResponse.json({ error: bgV.error }, { status: 400 });
+    validatedBookGenre = bgV.value;
+  }
+  if (bookLink) {
+    const blV = validateUrl(bookLink);
+    if (!blV.ok) return NextResponse.json({ error: blV.error }, { status: 400 });
+    validatedBookLink = blV.value;
   }
 
   // Break hook into lines for kinetic reveal
-  const pieces = hook.trim().split(/(?<=[.,—!?])\s+/);
+  const pieces = hookV.value.split(/(?<=[.,—!?])\s+/);
   const lines: string[] = [];
   for (const p of pieces) {
     if (lines.length === 0) lines.push(p);
@@ -36,8 +117,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Create a book on the fly if a title is provided but no bookId
-  let resolvedBookId = bookId || null;
-  if (!resolvedBookId && bookTitle?.trim()) {
+  if (!resolvedBookId && validatedBookTitle) {
     const palette = [
       { color: "#1e1b4b", accent: "#fbbf24", emoji: "📖" },
       { color: "#7f1d1d", accent: "#fecaca", emoji: "📕" },
@@ -49,15 +129,15 @@ export async function POST(req: NextRequest) {
     const pick = palette[Math.floor(Math.random() * palette.length)];
     const book = await db.book.create({
       data: {
-        authorId,
-        title: bookTitle.trim(),
-        subtitle: bookGenre || "A Book",
+        authorId: authorIdV.value,
+        title: validatedBookTitle,
+        subtitle: sanitizeText(validatedBookGenre) || "A Book",
         coverColor: pick.color,
         coverAccent: pick.accent,
         coverEmoji: pick.emoji,
         description: "",
-        genre: bookGenre || "Fiction",
-        buyLink: bookLink || "",
+        genre: validatedBookGenre,
+        buyLink: validatedBookLink,
         pages: 0,
       },
     });
@@ -66,19 +146,19 @@ export async function POST(req: NextRequest) {
 
   const reel = await db.reel.create({
     data: {
-      authorId,
+      authorId: authorIdV.value,
       bookId: resolvedBookId,
-      hook: hook.trim(),
+      hook: hookV.value,
       hookLines: lines.join("\n"),
-      caption: caption?.trim() || "",
-      mood: mood || "amber",
-      duration: duration || 7,
+      caption: captionV.value,
+      mood: moodV.value,
+      duration: duration === 7 ? 7 : 7, // Always 7 — brand promise
     },
     include: { author: true, book: true },
   });
 
   await db.user.update({
-    where: { id: authorId },
+    where: { id: authorIdV.value },
     data: { reelsCount: { increment: 1 } },
   });
 

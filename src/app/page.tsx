@@ -1,3 +1,16 @@
+/*
+ * ReelWrite — 7-second reels for writers
+ * Copyright (c) 2026 ReelWrite. All rights reserved.
+ *
+ * PROPRIETARY AND CONFIDENTIAL
+ * This source code is the proprietary work of ReelWrite. No part of this
+ * software may be copied, reproduced, distributed, or used to create
+ * derivative works without the express written permission of ReelWrite.
+ * Unauthorized use, duplication, or distribution is prohibited.
+ *
+ * For licensing inquiries: legal@reelwrite.app
+ */
+
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
@@ -11,9 +24,10 @@ import { ProfileView } from "@/components/reelwrite/ProfileView";
 import { AdminView } from "@/components/reelwrite/AdminView";
 import { LandingView } from "@/components/reelwrite/LandingView";
 import { ShareSheet } from "@/components/reelwrite/ShareSheet";
+import { OwnershipNotice } from "@/components/reelwrite/OwnershipNotice";
 import type { ReelWithRelations } from "@/components/reelwrite/ReelCard";
 import { useToast } from "@/hooks/use-toast";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Shield } from "lucide-react";
 
 interface Me {
   id: string;
@@ -38,6 +52,7 @@ export default function Home() {
   const [shareReel, setShareReel] = useState<ReelWithRelations | null>(null);
   const [profileWriterId, setProfileWriterId] = useState<string | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [ownershipOpen, setOwnershipOpen] = useState(false);
   // Landing page: show on first visit (or until the user dismisses it)
   const [showLanding, setShowLanding] = useState(true);
   const { toast } = useToast();
@@ -205,15 +220,26 @@ export default function Home() {
 
   return (
     <main className="relative h-[100dvh] w-full overflow-hidden bg-[#0a0a0a]">
-      {/* Floating "About" button to reopen the landing page */}
-      <button
-        onClick={reopenLanding}
-        className="absolute top-3 right-3 z-40 flex items-center gap-1 rounded-full bg-black/50 backdrop-blur-md border border-white/10 px-2.5 py-1 text-[10px] font-semibold text-white/70 hover:text-amber-400 hover:border-amber-400/40 transition-colors"
-        aria-label="About ReelWrite"
-      >
-        <Sparkles className="w-3 h-3" />
-        About
-      </button>
+      {/* Floating "About" + "Shield" buttons to reopen the landing page and show ownership notice */}
+      <div className="absolute top-3 right-3 z-40 flex items-center gap-1.5">
+        <button
+          onClick={() => setOwnershipOpen(true)}
+          className="flex items-center gap-1 rounded-full bg-black/50 backdrop-blur-md border border-white/10 px-2.5 py-1 text-[10px] font-semibold text-white/70 hover:text-rose-400 hover:border-rose-400/40 transition-colors"
+          aria-label="Ownership & protection notice"
+          title="Ownership & protection"
+        >
+          <Shield className="w-3 h-3" />
+          Protected
+        </button>
+        <button
+          onClick={reopenLanding}
+          className="flex items-center gap-1 rounded-full bg-black/50 backdrop-blur-md border border-white/10 px-2.5 py-1 text-[10px] font-semibold text-white/70 hover:text-amber-400 hover:border-amber-400/40 transition-colors"
+          aria-label="About ReelWrite"
+        >
+          <Sparkles className="w-3 h-3" />
+          About
+        </button>
+      </div>
 
       {/* FEED view */}
       {view === "feed" && (
@@ -321,6 +347,12 @@ export default function Home() {
         reel={shareReel}
         open={shareOpen}
         onOpenChange={setShareOpen}
+      />
+
+      {/* Ownership & protection notice */}
+      <OwnershipNotice
+        open={ownershipOpen}
+        onOpenChange={setOwnershipOpen}
       />
     </main>
   );

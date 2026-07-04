@@ -108,3 +108,30 @@ model Follow {
 
   @@unique([followerId, followeeId])
 }
+
+// Security monitoring — logs every intrusion attempt and tracks blocked IPs
+model SecurityEvent {
+  id        String   @id @default(cuid())
+  ip        String
+  path      String   // the path that was attempted
+  method    String   // GET, POST, etc.
+  userAgent String   @default("")
+  referer   String   @default("")
+  type      String   // HONEYPOT | SQL_INJECTION | XSS | PATH_TRAVERSAL | RATE_LIMIT | BLOCKED | SCAN
+  severity  String   // LOW | MEDIUM | HIGH | CRITICAL
+  blocked   Boolean  @default(false)
+  metadata  String   @default("{}") // JSON string for extra context
+  createdAt DateTime @default(now())
+
+  @@index([ip])
+  @@index([createdAt])
+  @@index([type])
+}
+
+model BlockedIp {
+  id        String   @id @default(cuid())
+  ip        String   @unique
+  reason    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}

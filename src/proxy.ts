@@ -12,6 +12,15 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/lib/db";
+import {
+  isHoneypot,
+  honeypotSeverity,
+  detectAttack,
+  AUTO_BLOCK_THRESHOLD,
+  AUTO_BLOCK_WINDOW_MS,
+  AUTO_BLOCK_DURATION_MS,
+} from "@/lib/security";
 
 // In-memory rate limit store (per-instance).
 // For multi-instance deployments, swap this for Redis or Upstash.
@@ -24,6 +33,69 @@ const RATE_LIMIT_MAX = {
 
 type Bucket = { count: number; resetAt: number };
 const buckets = new Map<string, Bucket>();
+
+// In-memory blocklist cache (synced from DB). Refreshed every 30 seconds.
+let blocklistCache: { ips: Set<string>; expiresAt: number } = {
+  ips: new Set(),
+  expiresAt: 0,
+};
+const BLOCKLIST_CACHE_TTL = 30_000; // 30 seconds
+
+async function getBlocklist(): Promise<Set<string>> {
+  const now = Date.now();
+  if (blocklistCache.expiresAt > now) {
+    return blocklistCache.ips;
+  }
+  // Refresh from DB
+  try {
+    const blocked = await db.blockedIp.findMany({
+      where: { expiresAt: { gt: new Date(now) } },
+      select: { ip: true },
+    });
+    const ips = new Set(blocked.map((b) => b.ip));
+    blocklistCache = { ips, expiresAt: now + BLOCKLIST_CACHE_TTL };
+    return ips;
+  } catch {
+    // DB not ready (e.g. during build) — fail open with empty set
+    return blocklistCache.ips;
+  }
+}
+
+// Track honeypot hits per IP for auto-blocking (in-memory, rolling window)
+const honeypotHits = new Map<string, number[]>(); // ip -> array of timestamps
+
+function recordHoneypotHit(ip: string): { shouldBlock: boolean; hitCount: number } {
+  const now = Date.now();
+  const windowStart = now - AUTO_BLOCK_WINDOW_MS;
+  const hits = (honeypotHits.get(ip) || []).filter((t) => t > windowStart);
+  hits.push(now);
+  honeypotHits.set(ip, hits);
+  // Clean up old entries periodically
+  if (honeypotHits.size > 10_000) {
+    for (const [key, tsList] of honeypotHits) {
+      const fresh = tsList.filter((t) => t > windowStart);
+      if (fresh.length === 0) honeypotHits.delete(key);
+      else honeypotHits.set(key, fresh);
+    }
+  }
+  return { shouldBlock: hits.length >= AUTO_BLOCK_THRESHOLD, hitCount: hits.length };
+}
+
+async function blockIp(ip: string, reason: string): Promise<void> {
+  try {
+    const expiresAt = new Date(Date.now() + AUTO_BLOCK_DURATION_MS);
+    // Upsert — if already blocked, extend the expiry
+    await db.blockedIp.upsert({
+      where: { ip },
+      create: { ip, reason, expiresAt },
+      update: { reason, expiresAt },
+    });
+    // Invalidate the cache so the block takes effect immediately
+    blocklistCache = { ips: new Set(), expiresAt: 0 };
+  } catch {
+    // DB not ready — fail silently, the in-memory honeypot tracking still works
+  }
+}
 
 // Garbage-collect expired buckets every 5 minutes
 const GC_INTERVAL = 5 * 60_000;
@@ -61,35 +133,62 @@ function getClientIp(req: NextRequest): string {
   );
 }
 
+// Log a security event to the DB (fire-and-forget — never block the response)
+function logSecurityEvent(event: {
+  ip: string;
+  path: string;
+  method: string;
+  userAgent: string;
+  referer: string;
+  type: string;
+  severity: string;
+  blocked: boolean;
+  metadata?: Record<string, unknown>;
+}): void {
+  // Fire-and-forget — don't await, don't block
+  db.securityEvent
+    .create({
+      data: {
+        ip: event.ip,
+        path: event.path.slice(0, 500), // cap length
+        method: event.method,
+        userAgent: event.userAgent.slice(0, 500),
+        referer: event.referer.slice(0, 500),
+        type: event.type,
+        severity: event.severity,
+        blocked: event.blocked,
+        metadata: JSON.stringify(event.metadata || {}),
+      },
+    })
+    .catch(() => {
+      // Silently ignore DB errors — security logging must never break the request
+    });
+}
+
 // Content Security Policy — restricts where scripts/styles/assets can load from
 const CSP = [
   "default-src 'self'",
-  // Allow inline styles (Tailwind requires this) and style attributes
   "style-src 'self' 'unsafe-inline'",
-  // Allow inline scripts for Next.js hydration, but no external origins
   "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-  // Images: self + data: URIs (for canvas/QR) + https (for any external book covers)
   "img-src 'self' data: https: blob:",
-  // Fonts: self only
   "font-src 'self' data:",
-  // Connect: self only (no external API calls from the browser)
   "connect-src 'self'",
-  // No external frames
   "frame-ancestors 'self'",
-  // No form submissions to external origins
   "form-action 'self'",
-  // No plugins
   "object-src 'none'",
-  // Restrict base
   "base-uri 'self'",
 ].join("; ");
 
-export function proxy(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const res = NextResponse.next();
   const ip = getClientIp(req);
   const path = req.nextUrl.pathname;
+  const method = req.method;
+  const userAgent = req.headers.get("user-agent") || "";
+  const referer = req.headers.get("referer") || "";
+  const fullUrl = req.nextUrl.pathname + req.nextUrl.search;
 
-  // Apply CSP and other security headers to every response
+  // Apply security headers to every response
   res.headers.set("Content-Security-Policy", CSP);
   res.headers.set("X-Frame-Options", "SAMEORIGIN");
   res.headers.set("X-Content-Type-Options", "nosniff");
@@ -99,7 +198,100 @@ export function proxy(req: NextRequest) {
     "camera=(), microphone=(), geolocation=(), browsing-topics=()"
   );
 
-  // Rate limit API routes
+  // ===== STEP 1: Check if IP is already blocked =====
+  const blocklist = await getBlocklist();
+  if (blocklist.has(ip)) {
+    logSecurityEvent({
+      ip, path, method, userAgent, referer,
+      type: "BLOCKED",
+      severity: "HIGH",
+      blocked: true,
+      metadata: { reason: "IP is on blocklist" },
+    });
+    return new NextResponse(
+      JSON.stringify({ error: "Access denied", message: "Your IP has been blocked due to suspicious activity." }),
+      {
+        status: 403,
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Security-Policy": CSP,
+          "Retry-After": "3600",
+        },
+      }
+    );
+  }
+
+  // ===== STEP 2: Honeypot detection =====
+  if (isHoneypot(path)) {
+    const severity = honeypotSeverity(path);
+    const { shouldBlock, hitCount } = recordHoneypotHit(ip);
+
+    logSecurityEvent({
+      ip, path, method, userAgent, referer,
+      type: "HONEYPOT",
+      severity,
+      blocked: shouldBlock,
+      metadata: { hitCount, autoBlocked: shouldBlock },
+    });
+
+    // Auto-block repeat offenders
+    if (shouldBlock) {
+      await blockIp(ip, `Auto-blocked: ${hitCount} honeypot hits in ${AUTO_BLOCK_WINDOW_MS / 60000}min`);
+      logSecurityEvent({
+        ip, path, method, userAgent, referer,
+        type: "BLOCKED",
+        severity: "CRITICAL",
+        blocked: true,
+        metadata: { reason: "Auto-blocked after repeated honeypot hits", hitCount },
+      });
+    }
+
+    // Return 404 — don't reveal that this is a honeypot
+    return new NextResponse("Not Found", {
+      status: 404,
+      headers: { "Content-Security-Policy": CSP },
+    });
+  }
+
+  // ===== STEP 3: Attack pattern detection (SQLi, XSS, path traversal, cmd injection) =====
+  const attack = detectAttack(fullUrl);
+  if (attack.type) {
+    logSecurityEvent({
+      ip, path: fullUrl, method, userAgent, referer,
+      type: attack.type,
+      severity: attack.severity,
+      blocked: false,
+      metadata: { pattern: attack.pattern },
+    });
+    // For critical attacks (SQLi, cmd injection), auto-block immediately
+    if (attack.severity === "CRITICAL") {
+      await blockIp(ip, `Auto-blocked: ${attack.type} attempt detected`);
+      logSecurityEvent({
+        ip, path: fullUrl, method, userAgent, referer,
+        type: "BLOCKED",
+        severity: "CRITICAL",
+        blocked: true,
+        metadata: { reason: `Auto-blocked: ${attack.type}`, pattern: attack.pattern },
+      });
+      return new NextResponse(
+        JSON.stringify({ error: "Forbidden", message: "Malicious request detected." }),
+        {
+          status: 403,
+          headers: { "Content-Type": "application/json", "Content-Security-Policy": CSP },
+        }
+      );
+    }
+    // For high-severity (XSS, path traversal), reject the request but don't block yet
+    return new NextResponse(
+      JSON.stringify({ error: "Forbidden", message: "Request rejected by security filter." }),
+      {
+        status: 403,
+        headers: { "Content-Type": "application/json", "Content-Security-Policy": CSP },
+      }
+    );
+  }
+
+  // ===== STEP 4: Rate limit API routes =====
   if (path.startsWith("/api/")) {
     let max = RATE_LIMIT_MAX.default;
     if (path.includes("/upload") || path.includes("/like") || path.includes("/comments") || path.includes("/share")) {
@@ -115,6 +307,13 @@ export function proxy(req: NextRequest) {
     res.headers.set("X-RateLimit-Reset", String(rl.resetAt));
 
     if (!rl.allowed) {
+      logSecurityEvent({
+        ip, path, method, userAgent, referer,
+        type: "RATE_LIMIT",
+        severity: "MEDIUM",
+        blocked: false,
+        metadata: { limit: max, window: RATE_LIMIT_WINDOW_MS },
+      });
       return new NextResponse(
         JSON.stringify({
           error: "Too many requests",
@@ -136,8 +335,15 @@ export function proxy(req: NextRequest) {
     }
   }
 
-  // Block access to dotfiles (e.g. .env, .git) just in case
+  // ===== STEP 5: Block access to dotfiles (e.g. .env, .git) as a final safety net =====
   if (path.includes("/.")) {
+    logSecurityEvent({
+      ip, path, method, userAgent, referer,
+      type: "SCAN",
+      severity: "HIGH",
+      blocked: false,
+      metadata: { reason: "Dotfile access attempt" },
+    });
     return new NextResponse("Not Found", { status: 404 });
   }
 
@@ -146,7 +352,6 @@ export function proxy(req: NextRequest) {
 
 export const config = {
   matcher: [
-    // Apply to all routes except static assets
     "/((?!_next/static|_next/image|favicon.ico|icon.svg|icon-192.png|icon-512.png|icon-maskable-512.png|apple-touch-icon.png|favicon-16.png|favicon-32.png|og-image.png|manifest.json|robots.txt|sitemap.xml).*)",
   ],
 };

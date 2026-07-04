@@ -38,6 +38,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { MOODS } from "@/lib/moods";
 import { useToast } from "@/hooks/use-toast";
+import { SecurityTab } from "./SecurityTab";
 
 interface AdminStats {
   totalUsers: number;
@@ -416,6 +417,12 @@ export function AdminView({ currentUserId, onOpenProfile }: AdminViewProps) {
           >
             Top
           </TabsTrigger>
+          <TabsTrigger
+            value="security"
+            className="flex-1 data-[state=active]:bg-rose-500 data-[state=active]:text-white text-white/70"
+          >
+            Security
+          </TabsTrigger>
         </TabsList>
 
         {/* REELS TAB */}
@@ -545,6 +552,11 @@ export function AdminView({ currentUserId, onOpenProfile }: AdminViewProps) {
               </div>
             </div>
           ))}
+        </TabsContent>
+
+        {/* SECURITY TAB */}
+        <TabsContent value="security" className="mt-3">
+          <SecurityTab currentUserId={currentUserId} />
         </TabsContent>
       </Tabs>
     </div>

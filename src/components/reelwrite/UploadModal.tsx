@@ -26,9 +26,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Timer, Sparkles, Loader2, Check } from "lucide-react";
+import { Timer, Sparkles, Loader2, Check, Wand2 } from "lucide-react";
 import { MOODS, MOOD_LIST, type Mood } from "@/lib/moods";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 interface UploadModalProps {
   open: boolean;
@@ -52,8 +53,73 @@ export function UploadModal({
   const [bookLink, setBookLink] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  // Pitch-to-reel generator state
+  const [mode, setMode] = useState<"manual" | "generate">("manual");
+  const [pitch, setPitch] = useState("");
+  const [generating, setGenerating] = useState(false);
+  const [suggestedHooks, setSuggestedHooks] = useState<string[]>([]);
+  const [suggestedMood, setSuggestedMood] = useState<Mood | null>(null);
+  const [suggestedCaption, setSuggestedCaption] = useState<string | null>(null);
+  const { toast } = useToast();
+
   const HOOK_LIMIT = 180;
   const isOver = hook.length > HOOK_LIMIT;
+
+  async function generateFromPitch() {
+    if (pitch.trim().length < 10) {
+      toast({
+        title: "Pitch too short",
+        description: "Paste at least a sentence of your book's blurb.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setGenerating(true);
+    setSuggestedHooks([]);
+    setSuggestedMood(null);
+    setSuggestedCaption(null);
+    try {
+      const res = await fetch("/api/reels/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pitch: pitch.trim(), genre: bookGenre }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast({
+          title: "Couldn't generate",
+          description: data.error || "Try a different pitch.",
+          variant: "destructive",
+        });
+        return;
+      }
+      setSuggestedHooks(data.hooks || []);
+      setSuggestedMood(data.mood as Mood);
+      setSuggestedCaption(data.caption);
+      // Auto-select the first hook
+      if (data.hooks?.length > 0) {
+        setHook(data.hooks[0]);
+      }
+      if (data.mood) {
+        setMood(data.mood as Mood);
+      }
+      if (data.caption) {
+        setCaption(data.caption);
+      }
+      toast({
+        title: "Reel generated ✨",
+        description: `Found ${data.hooks?.length || 0} hook candidates. Pick your favorite.`,
+      });
+    } catch {
+      toast({
+        title: "Generation failed",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setGenerating(false);
+    }
+  }
 
   async function submit() {
     if (!hook.trim() || isOver) return;
@@ -83,6 +149,11 @@ export function UploadModal({
       setBookGenre("Fiction");
       setMood("amber");
       setBackground("mood");
+      setMode("manual");
+      setPitch("");
+      setSuggestedHooks([]);
+      setSuggestedMood(null);
+      setSuggestedCaption(null);
       onOpenChange(false);
       onCreated();
     } finally {
@@ -104,8 +175,132 @@ export function UploadModal({
           </DialogDescription>
         </DialogHeader>
 
+        {/* Mode toggle: Manual vs Generate from pitch */}
+        <div className="flex gap-1 p-1 rounded-lg bg-white/5 border border-white/10 mb-3">
+          <button
+            type="button"
+            onClick={() => setMode("manual")}
+            className={cn(
+              "flex-1 rounded-md py-1.5 text-xs font-semibold transition-colors flex items-center justify-center gap-1.5",
+              mode === "manual"
+                ? "bg-amber-400 text-black"
+                : "text-white/60 hover:text-white"
+            )}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            Write hook
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("generate")}
+            className={cn(
+              "flex-1 rounded-md py-1.5 text-xs font-semibold transition-colors flex items-center justify-center gap-1.5",
+              mode === "generate"
+                ? "bg-amber-400 text-black"
+                : "text-white/60 hover:text-white"
+            )}
+          >
+            <Wand2 className="w-3.5 h-3.5" />
+            Generate from pitch
+          </button>
+        </div>
+
         <div className="space-y-5 py-2">
-          {/* The hook — the 7-second kinetic text */}
+          {/* GENERATE MODE — paste your book pitch, we extract hooks */}
+          {mode === "generate" && (
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="pitch" className="text-sm font-semibold">
+                  Paste your book&apos;s pitch or blurb
+                </Label>
+                <Textarea
+                  id="pitch"
+                  value={pitch}
+                  onChange={(e) => setPitch(e.target.value)}
+                  placeholder="When the stars go dark, one lighthouse keeper must light the way home. But on the forty-first year, the dark starts keeping her company..."
+                  rows={5}
+                  className={cn(
+                    "bg-white/5 border-white/15 text-white placeholder:text-white/35",
+                    "focus-visible:ring-amber-400/50 resize-none text-sm"
+                  )}
+                />
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-white/45">
+                    We&apos;ll extract the punchiest lines as 7-second hook candidates.
+                  </span>
+                  <span className="text-white/45 font-mono">{pitch.length}/2000</span>
+                </div>
+              </div>
+              <Button
+                type="button"
+                onClick={generateFromPitch}
+                disabled={generating || pitch.trim().length < 10}
+                className="w-full bg-amber-400 text-black hover:bg-amber-300 font-bold py-2.5"
+              >
+                {generating ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Finding hooks…
+                  </>
+                ) : (
+                  <>
+                    <Wand2 className="w-4 h-4 mr-2" />
+                    Generate hooks from pitch
+                  </>
+                )}
+              </Button>
+
+              {/* Suggested hooks */}
+              {suggestedHooks.length > 0 && (
+                <div className="space-y-2">
+                  <div className="text-xs font-semibold text-white/70 flex items-center gap-1.5">
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    Pick your favorite ({suggestedHooks.length} candidates)
+                  </div>
+                  <div className="space-y-1.5">
+                    {suggestedHooks.map((h, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setHook(h)}
+                        className={cn(
+                          "w-full text-left rounded-lg p-2.5 border transition-all text-sm",
+                          hook === h
+                            ? "border-amber-400 bg-amber-400/10 text-white"
+                            : "border-white/10 bg-white/[0.03] text-white/80 hover:border-white/30"
+                        )}
+                      >
+                        <div className="flex items-start gap-2">
+                          <span
+                            className={cn(
+                              "shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold mt-0.5",
+                              hook === h
+                                ? "bg-amber-400 text-black"
+                                : "bg-white/10 text-white/60"
+                            )}
+                          >
+                            {i + 1}
+                          </span>
+                          <span className="font-serif">{h}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  {suggestedMood && (
+                    <div className="text-[11px] text-white/55 pt-1">
+                      ✨ Suggested mood: <span className="font-semibold text-amber-400">{MOODS[suggestedMood].label}</span>
+                      {suggestedCaption && (
+                        <span> · Suggested caption: &ldquo;{suggestedCaption}&rdquo;</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* The hook field — shown in both modes (the chosen/generated hook lands here) */}
+          {(mode === "manual" || suggestedHooks.length > 0) && (
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="hook" className="text-sm font-semibold">
@@ -142,6 +337,7 @@ export function UploadModal({
               one line, one promise.
             </div>
           </div>
+          )}
 
           {/* Caption */}
           <div className="space-y-2">

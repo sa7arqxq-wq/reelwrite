@@ -315,6 +315,13 @@ function CardPreview({
           </div>
         </div>
       </div>
+
+      {/* "Made on ReelWrite" watermark */}
+      <div className="absolute top-3 left-3 z-20 select-none pointer-events-none">
+        <span className="text-[8px] font-mono text-white/40 tracking-wide">
+          ✒️ Made on ReelWrite
+        </span>
+      </div>
     </div>
   );
 }
@@ -453,10 +460,15 @@ async function renderCard(
   ctx.font = "24px sans-serif";
   ctx.fillStyle = "rgba(255,255,255,0.55)";
   ctx.fillText(
-    `❤️ ${formatCount(reel.likes)}   👁 ${formatCount(reel.views)}   🔗 reelwrite.app`,
+    `❤️ ${formatCount(reel.likes)}   👁 ${formatCount(reel.views)}`,
     60,
     H - 80
   );
+
+  // "Made on ReelWrite" watermark — bottom left, small, low opacity
+  ctx.font = "bold 22px monospace";
+  ctx.fillStyle = "rgba(255,255,255,0.4)";
+  ctx.fillText("✒️ Made on ReelWrite", 60, H - 40);
 
   return canvas;
 }

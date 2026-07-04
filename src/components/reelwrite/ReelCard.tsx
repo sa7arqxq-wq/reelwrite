@@ -34,6 +34,7 @@ export interface ReelWithRelations {
   views: number;
   liked?: boolean;
   featured?: boolean;
+  background?: string; // "mood" | "cover"
   author: {
     id: string;
     username: string;
@@ -86,6 +87,8 @@ export function ReelCard({
 }: ReelCardProps) {
   const mood = getMood(reel.mood);
   const moodData = MOODS[mood];
+  const useCoverBackground = reel.background === "cover" && reel.book;
+  const cover = reel.book;
   const lines = reel.hookLines.split("\n").filter(Boolean);
   const [paused, setPaused] = useState(false);
   const [cycle, setCycle] = useState(0);
@@ -113,19 +116,59 @@ export function ReelCard({
 
   const lineDelay = (reel.duration * 1000) / (lines.length + 1);
 
+  // Accent color for text/badges — uses cover accent when in cover mode, mood accent otherwise
+  const accentColor = useCoverBackground ? cover!.coverAccent : moodData.accent;
+
   return (
     <section
       className="snap-item relative h-full w-full overflow-hidden flex items-center justify-center"
-      style={{
-        background: `radial-gradient(120% 100% at 50% 0%, ${moodData.to} 0%, ${moodData.from} 70%, #050505 100%)`,
-      }}
+      style={
+        useCoverBackground
+          ? {
+              background: `radial-gradient(120% 100% at 50% 0%, ${cover!.coverColor} 0%, #050505 80%, #000000 100%)`,
+            }
+          : {
+              background: `radial-gradient(120% 100% at 50% 0%, ${moodData.to} 0%, ${moodData.from} 70%, #050505 100%)`,
+            }
+      }
       onClick={() => setPaused((p) => !p)}
     >
-      {/* Ambient mood glow */}
-      <div
-        className="pointer-events-none absolute -top-1/3 left-1/2 -translate-x-1/2 w-[120%] h-[80%] rounded-full opacity-30 blur-3xl"
-        style={{ background: `radial-gradient(circle, ${moodData.accent} 0%, transparent 70%)` }}
-      />
+      {/* Cover-background mode: render a giant blurred book cover behind the text */}
+      {useCoverBackground && (
+        <>
+          <div
+            className="pointer-events-none absolute inset-0 flex items-center justify-center"
+            aria-hidden
+          >
+            <div
+              className="w-[180%] h-[180%] flex items-center justify-center rounded-[3rem] opacity-40"
+              style={{
+                background: `linear-gradient(160deg, ${cover!.coverColor} 0%, ${cover!.coverColor} 50%, #000000 100%)`,
+                boxShadow: `0 0 200px 80px ${cover!.coverAccent}33`,
+              }}
+            >
+              <span className="text-[280px] opacity-50 select-none" style={{ filter: "blur(2px)" }}>
+                {cover!.coverEmoji}
+              </span>
+            </div>
+          </div>
+          {/* Dark overlay for text contrast */}
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/70" />
+          {/* Cover accent glow */}
+          <div
+            className="pointer-events-none absolute -top-1/3 left-1/2 -translate-x-1/2 w-[120%] h-[80%] rounded-full opacity-25 blur-3xl"
+            style={{ background: `radial-gradient(circle, ${cover!.coverAccent} 0%, transparent 70%)` }}
+          />
+        </>
+      )}
+
+      {/* Ambient mood glow (mood mode only) */}
+      {!useCoverBackground && (
+        <div
+          className="pointer-events-none absolute -top-1/3 left-1/2 -translate-x-1/2 w-[120%] h-[80%] rounded-full opacity-30 blur-3xl"
+          style={{ background: `radial-gradient(circle, ${moodData.accent} 0%, transparent 70%)` }}
+        />
+      )}
       {/* Floating paper-grain noise (cheap, CSS-only) */}
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.07] mix-blend-overlay"
@@ -141,7 +184,7 @@ export function ReelCard({
           <motion.div
             key={`${animKey}-${cycle}`}
             className="h-full rounded-full"
-            style={{ background: moodData.accent }}
+            style={{ background: accentColor }}
             initial={{ width: "0%" }}
             animate={{ width: "100%" }}
             transition={{ duration: reel.duration, ease: "linear" }}
@@ -154,9 +197,9 @@ export function ReelCard({
               <span
                 className="flex items-center gap-0.5 rounded-full px-1.5 py-px font-sans font-bold"
                 style={{
-                  background: `${moodData.accent}22`,
-                  color: moodData.accent,
-                  border: `1px solid ${moodData.accent}44`,
+                  background: `${accentColor}22`,
+                  color: accentColor,
+                  border: `1px solid ${accentColor}44`,
                 }}
               >
                 ★ Featured
@@ -166,7 +209,7 @@ export function ReelCard({
           <span className="flex items-center gap-1">
             <span
               className="inline-block w-1.5 h-1.5 rounded-full"
-              style={{ background: moodData.accent }}
+              style={{ background: accentColor }}
             />
             {moodData.emoji} {moodData.label}
           </span>
@@ -204,7 +247,7 @@ export function ReelCard({
                   transition: { delay: i * lineDelay / 1000, duration: 0.6, ease: [0.22, 1, 0.36, 1] },
                 }}
                 className="font-serif text-3xl sm:text-4xl font-bold leading-tight tracking-tight"
-                style={{ color: "#fafaf9", textShadow: `0 2px 20px ${moodData.accent}55` }}
+                style={{ color: "#fafaf9", textShadow: `0 2px 20px ${accentColor}55` }}
               >
                 {line}
               </motion.p>
@@ -217,10 +260,17 @@ export function ReelCard({
                 transition: { delay: (lines.length * lineDelay) / 1000, duration: 0.5 },
               }}
               className="mx-auto mt-4 h-px w-12 origin-center"
-              style={{ background: moodData.accent }}
+              style={{ background: accentColor }}
             />
           </motion.div>
         </AnimatePresence>
+      </div>
+
+      {/* "Made on ReelWrite" watermark — growth lever */}
+      <div className="absolute bottom-[88px] left-4 z-10 select-none pointer-events-none">
+        <span className="text-[9px] font-mono text-white/30 tracking-wide">
+          ✒️ Made on ReelWrite
+        </span>
       </div>
 
       {/* Right action rail */}
@@ -242,7 +292,7 @@ export function ReelCard({
           </span>
           <span
             className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full flex items-center justify-center text-xs text-black font-bold"
-            style={{ background: moodData.accent }}
+            style={{ background: accentColor }}
           >
             +
           </span>
@@ -368,7 +418,7 @@ export function ReelCard({
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
               className="mt-2 flex items-center justify-center gap-2 w-full rounded-lg py-2 text-sm font-bold text-black transition-transform active:scale-95"
-              style={{ background: moodData.accent }}
+              style={{ background: accentColor }}
             >
               <BookOpen className="w-4 h-4" />
               Read this book

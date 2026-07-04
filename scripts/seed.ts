@@ -1,13 +1,18 @@
 // Seed script — populates ReelWrite with demo writers, books, and 7-second reels.
 // Run with: bun run scripts/seed.ts
 import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
 
 const db = new PrismaClient();
+
+// All demo accounts share the password: "demo1234"
+const DEMO_PASSWORD_HASH = bcrypt.hashSync("demo1234", 12);
 
 const writers = [
   {
     username: "marina.eclipse",
     displayName: "Marina Eclipse",
+    email: "marina@reelwrite.demo",
     bio: "Speculative fiction author. The night is just a page turning.",
     avatarColor: "#7c3aed",
     avatarEmoji: "🌙",
@@ -16,6 +21,7 @@ const writers = [
   {
     username: "theodore.ink",
     displayName: "Theodore Ink",
+    email: "theodore@reelwrite.demo",
     bio: "Slow-burn romance, faster-burn coffee. ☕",
     avatarColor: "#f43f5e",
     avatarEmoji: "🖋️",
@@ -23,6 +29,7 @@ const writers = [
   {
     username: "sasha.quill",
     displayName: "Sasha Quill",
+    email: "sasha@reelwrite.demo",
     bio: "Memoirist. I write the things I'm afraid to say out loud.",
     avatarColor: "#0ea5e9",
     avatarEmoji: "🌊",
@@ -30,6 +37,7 @@ const writers = [
   {
     username: "fenwick.jones",
     displayName: "Fenwick Jones",
+    email: "fenwick@reelwrite.demo",
     bio: "Hardboiled mysteries, soft-boiled detectives.",
     avatarColor: "#10b981",
     avatarEmoji: "🔍",
@@ -37,6 +45,7 @@ const writers = [
   {
     username: "opal.verdant",
     displayName: "Opal Verdant",
+    email: "opal@reelwrite.demo",
     bio: "Cozy fantasy, cottagecore chaos, tea-stained pages.",
     avatarColor: "#f59e0b",
     avatarEmoji: "🍄",
@@ -44,6 +53,7 @@ const writers = [
   {
     username: "kael.merchant",
     displayName: "Kael Merchant",
+    email: "kael@reelwrite.demo",
     bio: "Epic fantasy. 12-book arcs. Yes, I sleep.",
     avatarColor: "#1e293b",
     avatarEmoji: "⚔️",
@@ -64,16 +74,16 @@ const books = [
 ];
 
 const reels = [
-  { author: "marina.eclipse", book: "The Last Lighthouse", hook: "She kept the light on for forty years — and on the forty-first, the dark kept it company.", caption: "Read the first chapter free. 🌑", mood: "violet", likes: 1284, comments: 92, shares: 188, saves: 411, views: 18420, featured: true },
-  { author: "marina.eclipse", book: "Saltwater Hymns", hook: "Salt in my mouth, and the sea still asking my name.", caption: "Poetry for the tide-walkers. 🌊", mood: "ocean", likes: 822, comments: 41, shares: 76, saves: 233, views: 9840 },
-  { author: "theodore.ink", book: "Letters We Never Sent", hook: "He mailed a letter to an address that no longer existed. Someone wrote back.", caption: "The romance everyone is whispering about. 💌", mood: "rose", likes: 3920, comments: 412, shares: 921, saves: 1832, views: 62400, featured: true },
-  { author: "theodore.ink", book: "Coffee at Midnight", hook: "She ordered the same drink at 2 a.m. every night. He started learning her name.", caption: "A novella for night owls. ☕", mood: "amber", likes: 2103, comments: 188, shares: 244, saves: 612, views: 28100 },
-  { author: "sasha.quill", book: "Bones Like Glass", hook: "My mother taught me to fold small. I have been unfolding ever since.", caption: "A memoir about inheritance, in every sense. 🦴", mood: "slate", likes: 1542, comments: 287, shares: 102, saves: 521, views: 21300 },
-  { author: "fenwick.jones", book: "The Marlowe File", hook: "The case file had one name on it. Hers. And a date twenty years too late.", caption: "The mystery everyone's lost sleep over. 🔎", mood: "slate", likes: 982, comments: 64, shares: 88, saves: 244, views: 14200 },
-  { author: "fenwick.jones", book: "Dead Letter Office", hook: "The letter arrived on a Tuesday. It was postmarked 1962.", caption: "Cold cases, warm ink. 📮", mood: "amber", likes: 1401, comments: 73, shares: 154, saves: 318, views: 19800 },
-  { author: "opal.verdant", book: "The Mushroom Witch", hook: "She told the town she only sold soup. The town agreed not to ask about the third ingredient.", caption: "Cozy fantasy for the tired heart. 🍄", mood: "emerald", likes: 5230, comments: 612, shares: 1421, saves: 2402, views: 89300 },
-  { author: "opal.verdant", book: "Tea & Thunderstorms", hook: "Every story in this book takes exactly one cup of tea to read. I timed them.", caption: "Twelve small stories. ⛈️", mood: "violet", likes: 1820, comments: 144, shares: 213, saves: 488, views: 23100 },
-  { author: "kael.merchant", book: "Emberfall", hook: "They told her the empire was unbreakable. They had not met her yet.", caption: "Book One of the Ash Cycle. 🔥", mood: "rose", likes: 7420, comments: 1204, shares: 2810, saves: 5102, views: 142000 },
+  { author: "marina.eclipse", book: "The Last Lighthouse", hook: "She kept the light on for forty years — and on the forty-first, the dark kept it company.", caption: "Read the first chapter free. 🌑", mood: "violet", likes: 1284, comments: 92, shares: 188, saves: 411, views: 18420, featured: true, background: "cover" },
+  { author: "marina.eclipse", book: "Saltwater Hymns", hook: "Salt in my mouth, and the sea still asking my name.", caption: "Poetry for the tide-walkers. 🌊", mood: "ocean", likes: 822, comments: 41, shares: 76, saves: 233, views: 9840, background: "mood" },
+  { author: "theodore.ink", book: "Letters We Never Sent", hook: "He mailed a letter to an address that no longer existed. Someone wrote back.", caption: "The romance everyone is whispering about. 💌", mood: "rose", likes: 3920, comments: 412, shares: 921, saves: 1832, views: 62400, featured: true, background: "mood" },
+  { author: "theodore.ink", book: "Coffee at Midnight", hook: "She ordered the same drink at 2 a.m. every night. He started learning her name.", caption: "A novella for night owls. ☕", mood: "amber", likes: 2103, comments: 188, shares: 244, saves: 612, views: 28100, background: "cover" },
+  { author: "sasha.quill", book: "Bones Like Glass", hook: "My mother taught me to fold small. I have been unfolding ever since.", caption: "A memoir about inheritance, in every sense. 🦴", mood: "slate", likes: 1542, comments: 287, shares: 102, saves: 521, views: 21300, background: "cover" },
+  { author: "fenwick.jones", book: "The Marlowe File", hook: "The case file had one name on it. Hers. And a date twenty years too late.", caption: "The mystery everyone's lost sleep over. 🔎", mood: "slate", likes: 982, comments: 64, shares: 88, saves: 244, views: 14200, background: "mood" },
+  { author: "fenwick.jones", book: "Dead Letter Office", hook: "The letter arrived on a Tuesday. It was postmarked 1962.", caption: "Cold cases, warm ink. 📮", mood: "amber", likes: 1401, comments: 73, shares: 154, saves: 318, views: 19800, background: "mood" },
+  { author: "opal.verdant", book: "The Mushroom Witch", hook: "She told the town she only sold soup. The town agreed not to ask about the third ingredient.", caption: "Cozy fantasy for the tired heart. 🍄", mood: "emerald", likes: 5230, comments: 612, shares: 1421, saves: 2402, views: 89300, background: "cover" },
+  { author: "opal.verdant", book: "Tea & Thunderstorms", hook: "Every story in this book takes exactly one cup of tea to read. I timed them.", caption: "Twelve small stories. ⛈️", mood: "violet", likes: 1820, comments: 144, shares: 213, saves: 488, views: 23100, background: "mood" },
+  { author: "kael.merchant", book: "Emberfall", hook: "They told her the empire was unbreakable. They had not met her yet.", caption: "Book One of the Ash Cycle. 🔥", mood: "rose", likes: 7420, comments: 1204, shares: 2810, saves: 5102, views: 142000, background: "cover" },
 ];
 
 function breakHook(hook: string): string {
@@ -106,6 +116,8 @@ async function main() {
     const u = await db.user.create({
       data: {
         ...w,
+        email: w.email,
+        passwordHash: DEMO_PASSWORD_HASH,
         role: (w as { role?: string }).role || "USER",
         followers: Math.floor(Math.random() * 40000) + 800,
         following: Math.floor(Math.random() * 200) + 12,
@@ -152,6 +164,7 @@ async function main() {
         saves: r.saves,
         views: r.views,
         featured: (r as { featured?: boolean }).featured || false,
+        background: (r as { background?: string }).background === "cover" ? "cover" : "mood",
       },
     });
   }

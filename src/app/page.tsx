@@ -25,17 +25,25 @@ import { AdminView } from "@/components/reelwrite/AdminView";
 import { LandingView } from "@/components/reelwrite/LandingView";
 import { ShareSheet } from "@/components/reelwrite/ShareSheet";
 import { OwnershipNotice } from "@/components/reelwrite/OwnershipNotice";
+import { AuthModal } from "@/components/reelwrite/AuthModal";
 import type { ReelWithRelations } from "@/components/reelwrite/ReelCard";
 import { useToast } from "@/hooks/use-toast";
-import { Sparkles, Shield } from "lucide-react";
+import { signOut } from "next-auth/react";
+import { Sparkles, Shield, LogOut } from "lucide-react";
 
 interface Me {
   id: string;
   username: string;
   displayName: string;
+  email: string;
   avatarColor: string;
   avatarEmoji: string;
+  bio: string;
   role: string;
+  banned: boolean;
+  followers: number;
+  following: number;
+  reelsCount: number;
 }
 
 const LANDING_KEY = "reelwrite:entered";
@@ -53,6 +61,8 @@ export default function Home() {
   const [profileWriterId, setProfileWriterId] = useState<string | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [ownershipOpen, setOwnershipOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [meLoading, setMeLoading] = useState(true);
   // Landing page: show on first visit (or until the user dismisses it)
   const [showLanding, setShowLanding] = useState(true);
   const { toast } = useToast();
@@ -68,8 +78,9 @@ export default function Home() {
     }
   }, []);
 
-  // Get-or-create the demo current user
-  useEffect(() => {
+  // Get the current user from the session
+  const loadMe = useCallback(() => {
+    setMeLoading(true);
     fetch("/api/me")
       .then((r) => r.json())
       .then((data) => setMe(data.me))
@@ -79,8 +90,13 @@ export default function Home() {
           description: "Please reload the page.",
           variant: "destructive",
         });
-      });
+      })
+      .finally(() => setMeLoading(false));
   }, [toast]);
+
+  useEffect(() => {
+    loadMe();
+  }, [loadMe]);
 
   // Load reels whenever feed changes
   const refreshReels = useCallback(() => {
@@ -220,8 +236,24 @@ export default function Home() {
 
   return (
     <main className="relative h-[100dvh] w-full overflow-hidden bg-[#0a0a0a]">
-      {/* Floating "About" + "Shield" buttons to reopen the landing page and show ownership notice */}
+      {/* Floating buttons: Sign out + Protected + About */}
       <div className="absolute top-3 right-3 z-40 flex items-center gap-1.5">
+        {me && (
+          <button
+            onClick={() => {
+              signOut({ redirect: false }).then(() => {
+                setMe(null);
+                toast({ title: "Signed out", description: "See you soon ✨" });
+              });
+            }}
+            className="flex items-center gap-1 rounded-full bg-black/50 backdrop-blur-md border border-white/10 px-2.5 py-1 text-[10px] font-semibold text-white/70 hover:text-rose-400 hover:border-rose-400/40 transition-colors"
+            aria-label="Sign out"
+            title="Sign out"
+          >
+            <LogOut className="w-3 h-3" />
+            @{me.username}
+          </button>
+        )}
         <button
           onClick={() => setOwnershipOpen(true)}
           className="flex items-center gap-1 rounded-full bg-black/50 backdrop-blur-md border border-white/10 px-2.5 py-1 text-[10px] font-semibold text-white/70 hover:text-rose-400 hover:border-rose-400/40 transition-colors"
@@ -354,6 +386,50 @@ export default function Home() {
         open={ownershipOpen}
         onOpenChange={setOwnershipOpen}
       />
+
+      {/* Auth modal — shown when user needs to sign in or sign up */}
+      <AuthModal
+        open={authOpen}
+        onOpenChange={setAuthOpen}
+        onSuccess={loadMe}
+      />
+
+      {/* Auth gate — when not logged in (and not loading), prompt to sign in */}
+      {!meLoading && !me && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm px-6">
+          <div className="text-center max-w-sm">
+            <div className="text-5xl mb-4">✒️</div>
+            <h2 className="font-serif text-2xl font-bold text-amber-400 mb-2">
+              Sign in to continue
+            </h2>
+            <p className="text-sm text-white/65 mb-6 leading-relaxed">
+              Create a writer account or sign in to scroll reels, like books,
+              and publish your own 7-second hooks.
+            </p>
+            <button
+              onClick={() => setAuthOpen(true)}
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-amber-400 px-6 py-3 text-sm font-bold text-black transition-all hover:bg-amber-300 hover:scale-105 active:scale-100"
+            >
+              <Sparkles className="w-4 h-4" />
+              Sign in / Sign up
+            </button>
+            <p className="text-[10px] text-white/40 mt-4">
+              Demo accounts: marina@reelwrite.demo · theodore@reelwrite.demo ·
+              kael@reelwrite.demo · Password: demo1234
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Loading gate — while checking session */}
+      {meLoading && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#0a0a0a]">
+          <div className="text-center">
+            <div className="text-3xl mb-3 animate-pulse">✒️</div>
+            <p className="text-sm text-white/55">Loading ReelWrite…</p>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

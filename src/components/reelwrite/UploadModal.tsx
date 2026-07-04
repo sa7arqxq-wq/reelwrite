@@ -46,6 +46,7 @@ export function UploadModal({
   const [hook, setHook] = useState("");
   const [caption, setCaption] = useState("");
   const [mood, setMood] = useState<Mood>("amber");
+  const [background, setBackground] = useState<"mood" | "cover">("mood");
   const [bookTitle, setBookTitle] = useState("");
   const [bookGenre, setBookGenre] = useState("Fiction");
   const [bookLink, setBookLink] = useState("");
@@ -67,6 +68,7 @@ export function UploadModal({
           caption: caption.trim(),
           mood,
           duration: 7,
+          background: bookTitle.trim() ? background : "mood",
           bookTitle: bookTitle.trim() || undefined,
           bookGenre,
           bookLink,
@@ -80,6 +82,7 @@ export function UploadModal({
       setBookLink("");
       setBookGenre("Fiction");
       setMood("amber");
+      setBackground("mood");
       onOpenChange(false);
       onCreated();
     } finally {
@@ -223,6 +226,43 @@ export function UploadModal({
                 className="bg-white/5 border-white/15 text-white placeholder:text-white/35 focus-visible:ring-amber-400/50"
               />
             </div>
+
+            {/* Background choice — only shown when a book title is entered */}
+            {bookTitle.trim() && (
+              <div className="space-y-2 pt-1">
+                <Label className="text-xs font-semibold">Reel background</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setBackground("mood")}
+                    className={cn(
+                      "rounded-lg p-2.5 text-left border transition-all",
+                      background === "mood"
+                        ? "border-amber-400 ring-2 ring-amber-400/30 bg-amber-400/5"
+                        : "border-white/10 hover:border-white/30"
+                    )}
+                  >
+                    <div className="text-base">🎨</div>
+                    <div className="text-xs font-semibold mt-0.5">Mood gradient</div>
+                    <div className="text-[10px] text-white/50">Use the mood color palette</div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBackground("cover")}
+                    className={cn(
+                      "rounded-lg p-2.5 text-left border transition-all",
+                      background === "cover"
+                        ? "border-amber-400 ring-2 ring-amber-400/30 bg-amber-400/5"
+                        : "border-white/10 hover:border-white/30"
+                    )}
+                  >
+                    <div className="text-base">📖</div>
+                    <div className="text-xs font-semibold mt-0.5">Book cover</div>
+                    <div className="text-[10px] text-white/50">Use your book cover as the backdrop</div>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           <Button

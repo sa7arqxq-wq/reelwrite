@@ -16,6 +16,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { CopyProtection } from "@/components/reelwrite/CopyProtection";
+import { Providers } from "@/components/Providers";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -138,9 +139,11 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#0a0a0a] text-[#fafaf9]`}
       >
-        <CopyProtection />
-        {children}
-        <Toaster />
+        <Providers>
+          <CopyProtection />
+          {children}
+          <Toaster />
+        </Providers>
       </body>
     </html>
   );

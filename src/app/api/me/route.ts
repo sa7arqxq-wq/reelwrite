@@ -3,38 +3,31 @@
  * Copyright (c) 2026 ReelWrite. All rights reserved.
  *
  * PROPRIETARY AND CONFIDENTIAL
- * This source code is the proprietary work of ReelWrite. No part of this
- * software may be copied, reproduced, distributed, or used to create
- * derivative works without the express written permission of ReelWrite.
- * Unauthorized use, duplication, or distribution is prohibited.
- *
- * For licensing inquiries: legal@reelwrite.app
  */
 
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { getSessionUser } from "@/lib/auth";
 
-// GET /api/me — get-or-create the demo "current user" (an admin writer named You)
+// GET /api/me — returns the currently-logged-in user, or null
 export async function GET() {
-  let me = await db.user.findUnique({ where: { username: "you.writer" } });
-  if (!me) {
-    me = await db.user.create({
-      data: {
-        username: "you.writer",
-        displayName: "You",
-        bio: "Admin. Marketing my books in 7-second reels.",
-        avatarColor: "#f59e0b",
-        avatarEmoji: "✨",
-        isWriter: true,
-        role: "ADMIN",
-      },
-    });
-  } else if (me.role !== "ADMIN") {
-    // Ensure the demo account is always an admin
-    me = await db.user.update({
-      where: { id: me.id },
-      data: { role: "ADMIN" },
-    });
+  const user = await getSessionUser();
+  if (!user) {
+    return NextResponse.json({ me: null });
   }
-  return NextResponse.json({ me });
+  return NextResponse.json({
+    me: {
+      id: user.id,
+      username: user.username,
+      displayName: user.displayName,
+      email: user.email,
+      avatarColor: user.avatarColor,
+      avatarEmoji: user.avatarEmoji,
+      bio: user.bio,
+      role: user.role,
+      banned: user.banned,
+      followers: user.followers,
+      following: user.following,
+      reelsCount: user.reelsCount,
+    },
+  });
 }

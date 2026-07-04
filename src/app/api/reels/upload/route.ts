@@ -25,9 +25,10 @@ import {
 } from "@/lib/validation";
 
 // POST /api/reels/upload
-// body: { authorId, bookId?, hook, caption, mood, duration, bookTitle?, bookGenre?, bookLink? }
+// body: { authorId, bookId?, hook, caption, mood, duration, background?, bookTitle?, bookGenre?, bookLink? }
 // For demo: no real video upload — reels are kinetic-typography only.
 // If bookTitle is provided without bookId, a new book is created on the fly.
+// background: "mood" (default, uses mood gradient) | "cover" (uses book cover as background)
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const {
@@ -37,6 +38,7 @@ export async function POST(req: NextRequest) {
     caption,
     mood,
     duration,
+    background,
     bookTitle,
     bookGenre,
     bookLink,
@@ -153,6 +155,7 @@ export async function POST(req: NextRequest) {
       caption: captionV.value,
       mood: moodV.value,
       duration: duration === 7 ? 7 : 7, // Always 7 — brand promise
+      background: background === "cover" ? "cover" : "mood",
     },
     include: { author: true, book: true },
   });

@@ -10,26 +10,29 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  username     String   @unique
-  displayName  String
-  bio          String   @default("")
-  avatarColor  String   @default("#f59e0b") // gradient seed
-  avatarEmoji  String   @default("✍️")
-  isWriter     Boolean  @default(true)
-  role         String   @default("USER") // USER | ADMIN
-  banned       Boolean  @default(false)
-  followers    Int      @default(0)
-  following    Int      @default(0)
-  reelsCount   Int      @default(0)
-  createdAt    DateTime @default(now())
+  id            String    @id @default(cuid())
+  username      String    @unique
+  displayName   String
+  email         String    @unique
+  passwordHash  String?   // null for OAuth-only users
+  image         String?
+  bio           String    @default("")
+  avatarColor   String    @default("#f59e0b") // gradient seed
+  avatarEmoji   String    @default("✍️")
+  isWriter      Boolean   @default(true)
+  role          String    @default("USER") // USER | ADMIN
+  banned        Boolean   @default(false)
+  followers     Int       @default(0)
+  following     Int       @default(0)
+  reelsCount    Int       @default(0)
+  createdAt     DateTime  @default(now())
 
-  reels        Reel[]
-  books        Book[]
-  likes        Like[]
-  comments     Comment[]
-  followsFrom  Follow[] @relation("follower")
-  followsTo    Follow[] @relation("followee")
+  reels         Reel[]
+  books         Book[]
+  likes         Like[]
+  comments      Comment[]
+  followsFrom   Follow[]  @relation("follower")
+  followsTo     Follow[]  @relation("followee")
 }
 
 model Book {
@@ -66,6 +69,7 @@ model Reel {
   saves       Int      @default(0)
   views       Int      @default(0)
   featured    Boolean  @default(false)
+  background  String   @default("mood") // "mood" (gradient) | "cover" (book cover as background)
   createdAt   DateTime @default(now())
 
   author      User     @relation(fields: [authorId], references: [id])

@@ -20,6 +20,7 @@ export interface ReelWithRelations {
   saves: number;
   views: number;
   liked?: boolean;
+  featured?: boolean;
   author: {
     id: string;
     username: string;
@@ -134,7 +135,21 @@ export function ReelCard({
           />
         </div>
         <div className="mt-1 flex items-center justify-between text-[10px] text-white/60 font-mono">
-          <span>{reel.duration}s reel</span>
+          <span className="flex items-center gap-1.5">
+            <span>{reel.duration}s reel</span>
+            {reel.featured && (
+              <span
+                className="flex items-center gap-0.5 rounded-full px-1.5 py-px font-sans font-bold"
+                style={{
+                  background: `${moodData.accent}22`,
+                  color: moodData.accent,
+                  border: `1px solid ${moodData.accent}44`,
+                }}
+              >
+                ★ Featured
+              </span>
+            )}
+          </span>
           <span className="flex items-center gap-1">
             <span
               className="inline-block w-1.5 h-1.5 rounded-full"

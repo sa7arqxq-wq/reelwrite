@@ -11,6 +11,7 @@ const writers = [
     bio: "Speculative fiction author. The night is just a page turning.",
     avatarColor: "#7c3aed",
     avatarEmoji: "🌙",
+    role: "ADMIN",
   },
   {
     username: "theodore.ink",
@@ -63,9 +64,9 @@ const books = [
 ];
 
 const reels = [
-  { author: "marina.eclipse", book: "The Last Lighthouse", hook: "She kept the light on for forty years — and on the forty-first, the dark kept it company.", caption: "Read the first chapter free. 🌑", mood: "violet", likes: 1284, comments: 92, shares: 188, saves: 411, views: 18420 },
+  { author: "marina.eclipse", book: "The Last Lighthouse", hook: "She kept the light on for forty years — and on the forty-first, the dark kept it company.", caption: "Read the first chapter free. 🌑", mood: "violet", likes: 1284, comments: 92, shares: 188, saves: 411, views: 18420, featured: true },
   { author: "marina.eclipse", book: "Saltwater Hymns", hook: "Salt in my mouth, and the sea still asking my name.", caption: "Poetry for the tide-walkers. 🌊", mood: "ocean", likes: 822, comments: 41, shares: 76, saves: 233, views: 9840 },
-  { author: "theodore.ink", book: "Letters We Never Sent", hook: "He mailed a letter to an address that no longer existed. Someone wrote back.", caption: "The romance everyone is whispering about. 💌", mood: "rose", likes: 3920, comments: 412, shares: 921, saves: 1832, views: 62400 },
+  { author: "theodore.ink", book: "Letters We Never Sent", hook: "He mailed a letter to an address that no longer existed. Someone wrote back.", caption: "The romance everyone is whispering about. 💌", mood: "rose", likes: 3920, comments: 412, shares: 921, saves: 1832, views: 62400, featured: true },
   { author: "theodore.ink", book: "Coffee at Midnight", hook: "She ordered the same drink at 2 a.m. every night. He started learning her name.", caption: "A novella for night owls. ☕", mood: "amber", likes: 2103, comments: 188, shares: 244, saves: 612, views: 28100 },
   { author: "sasha.quill", book: "Bones Like Glass", hook: "My mother taught me to fold small. I have been unfolding ever since.", caption: "A memoir about inheritance, in every sense. 🦴", mood: "slate", likes: 1542, comments: 287, shares: 102, saves: 521, views: 21300 },
   { author: "fenwick.jones", book: "The Marlowe File", hook: "The case file had one name on it. Hers. And a date twenty years too late.", caption: "The mystery everyone's lost sleep over. 🔎", mood: "slate", likes: 982, comments: 64, shares: 88, saves: 244, views: 14200 },
@@ -105,6 +106,7 @@ async function main() {
     const u = await db.user.create({
       data: {
         ...w,
+        role: (w as { role?: string }).role || "USER",
         followers: Math.floor(Math.random() * 40000) + 800,
         following: Math.floor(Math.random() * 200) + 12,
         reelsCount: 0,
@@ -149,6 +151,7 @@ async function main() {
         shares: r.shares,
         saves: r.saves,
         views: r.views,
+        featured: (r as { featured?: boolean }).featured || false,
       },
     });
   }

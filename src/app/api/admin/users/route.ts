@@ -1,0 +1,26 @@
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/lib/db";
+
+async function requireAdmin(req: NextRequest) {
+  const userId =
+    req.nextUrl.searchParams.get("userId") ||
+    (req.headers.get("x-user-id") as string | null);
+  if (!userId) return null;
+  const user = await db.user.findUnique({ where: { id: userId } });
+  if (!user || user.role !== "ADMIN") return null;
+  return user;
+}
+
+// GET /api/admin/users?userId=... — list all users
+export async function GET(req: NextRequest) {
+  const admin = await requireAdmin(req);
+  if (!admin) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+
+  const users = await db.user.findMany({
+    orderBy: { createdAt: "desc" },
+    include: {
+      _count: { select: { reels: true, books: true, comments: true } },
+    },
+  });
+  return NextResponse.json({ users });
+}

@@ -8,6 +8,7 @@ import { CommentsSheet } from "@/components/reelwrite/CommentsSheet";
 import { UploadModal } from "@/components/reelwrite/UploadModal";
 import { DiscoverView } from "@/components/reelwrite/DiscoverView";
 import { ProfileView } from "@/components/reelwrite/ProfileView";
+import { AdminView } from "@/components/reelwrite/AdminView";
 import type { ReelWithRelations } from "@/components/reelwrite/ReelCard";
 import { useToast } from "@/hooks/use-toast";
 
@@ -17,6 +18,7 @@ interface Me {
   displayName: string;
   avatarColor: string;
   avatarEmoji: string;
+  role: string;
 }
 
 export default function Home() {
@@ -217,9 +219,18 @@ export default function Home() {
         </>
       )}
 
+      {/* ADMIN view — only visible to admins */}
+      {view === "admin" && me?.role === "ADMIN" && (
+        <AdminView
+          currentUserId={me.id}
+          onOpenProfile={handleOpenProfile}
+        />
+      )}
+
       {/* Bottom navigation — Create tab opens the modal */}
       <BottomNav
         active={view}
+        isAdmin={me?.role === "ADMIN"}
         onChange={(v) => {
           if (v === "upload") {
             setUploadOpen(true);

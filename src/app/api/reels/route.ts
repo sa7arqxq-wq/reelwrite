@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
 // GET /api/reels?feed=for-you|following|trending
+// For "for-you" feed, featured reels are sorted to the top.
 export async function GET(req: NextRequest) {
   const feed = req.nextUrl.searchParams.get("feed") || "for-you";
   const currentUserId = req.nextUrl.searchParams.get("userId");
@@ -26,8 +27,9 @@ export async function GET(req: NextRequest) {
       include: { author: true, book: true },
     });
   } else {
+    // For You: featured first, then by recency
     reels = await db.reel.findMany({
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ featured: "desc" }, { createdAt: "desc" }],
       take: 20,
       include: { author: true, book: true },
     });

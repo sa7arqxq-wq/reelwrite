@@ -54,18 +54,19 @@ export function UploadModal({
   const [submitting, setSubmitting] = useState(false);
 
   // Pitch-to-reel generator state
-  const [mode, setMode] = useState<"manual" | "generate">("manual");
+  const [mode, setMode] = useState<"manual" | "extract" | "ai">("manual");
   const [pitch, setPitch] = useState("");
   const [generating, setGenerating] = useState(false);
   const [suggestedHooks, setSuggestedHooks] = useState<string[]>([]);
   const [suggestedMood, setSuggestedMood] = useState<Mood | null>(null);
   const [suggestedCaption, setSuggestedCaption] = useState<string | null>(null);
+  const [hookSource, setHookSource] = useState<"extract" | "ai" | null>(null);
   const { toast } = useToast();
 
   const HOOK_LIMIT = 180;
   const isOver = hook.length > HOOK_LIMIT;
 
-  async function generateFromPitch() {
+  async function generateFromPitch(useAI: boolean) {
     if (pitch.trim().length < 10) {
       toast({
         title: "Pitch too short",
@@ -78,8 +79,10 @@ export function UploadModal({
     setSuggestedHooks([]);
     setSuggestedMood(null);
     setSuggestedCaption(null);
+    setHookSource(null);
     try {
-      const res = await fetch("/api/reels/generate", {
+      const endpoint = useAI ? "/api/reels/generate-ai" : "/api/reels/generate";
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pitch: pitch.trim(), genre: bookGenre }),
@@ -96,7 +99,7 @@ export function UploadModal({
       setSuggestedHooks(data.hooks || []);
       setSuggestedMood(data.mood as Mood);
       setSuggestedCaption(data.caption);
-      // Auto-select the first hook
+      setHookSource((data.source as "extract" | "ai") || (useAI ? "ai" : "extract"));
       if (data.hooks?.length > 0) {
         setHook(data.hooks[0]);
       }
@@ -107,8 +110,8 @@ export function UploadModal({
         setCaption(data.caption);
       }
       toast({
-        title: "Reel generated ✨",
-        description: `Found ${data.hooks?.length || 0} hook candidates. Pick your favorite.`,
+        title: useAI ? "AI hooks generated ✨" : "Hooks extracted ✨",
+        description: `${data.hooks?.length || 0} candidates${data.source === "ai" ? " (AI-rewritten)" : ""}. Pick your favorite.`,
       });
     } catch {
       toast({
@@ -154,6 +157,7 @@ export function UploadModal({
       setSuggestedHooks([]);
       setSuggestedMood(null);
       setSuggestedCaption(null);
+      setHookSource(null);
       onOpenChange(false);
       onCreated();
     } finally {
@@ -175,43 +179,56 @@ export function UploadModal({
           </DialogDescription>
         </DialogHeader>
 
-        {/* Mode toggle: Manual vs Generate from pitch */}
+        {/* Mode toggle: Manual vs Extract vs AI Rewrite */}
         <div className="flex gap-1 p-1 rounded-lg bg-white/5 border border-white/10 mb-3">
           <button
             type="button"
             onClick={() => setMode("manual")}
             className={cn(
-              "flex-1 rounded-md py-1.5 text-xs font-semibold transition-colors flex items-center justify-center gap-1.5",
+              "flex-1 rounded-md py-1.5 text-[11px] font-semibold transition-colors flex items-center justify-center gap-1",
               mode === "manual"
                 ? "bg-amber-400 text-black"
                 : "text-white/60 hover:text-white"
             )}
           >
-            <Sparkles className="w-3.5 h-3.5" />
-            Write hook
+            <Sparkles className="w-3 h-3" />
+            Write
           </button>
           <button
             type="button"
-            onClick={() => setMode("generate")}
+            onClick={() => setMode("extract")}
             className={cn(
-              "flex-1 rounded-md py-1.5 text-xs font-semibold transition-colors flex items-center justify-center gap-1.5",
-              mode === "generate"
+              "flex-1 rounded-md py-1.5 text-[11px] font-semibold transition-colors flex items-center justify-center gap-1",
+              mode === "extract"
                 ? "bg-amber-400 text-black"
                 : "text-white/60 hover:text-white"
             )}
           >
-            <Wand2 className="w-3.5 h-3.5" />
-            Generate from pitch
+            <Wand2 className="w-3 h-3" />
+            Extract
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("ai")}
+            className={cn(
+              "flex-1 rounded-md py-1.5 text-[11px] font-semibold transition-colors flex items-center justify-center gap-1",
+              mode === "ai"
+                ? "bg-violet-500 text-white"
+                : "text-white/60 hover:text-white"
+            )}
+          >
+            <span className="text-xs">🤖</span>
+            AI Rewrite
           </button>
         </div>
 
         <div className="space-y-5 py-2">
-          {/* GENERATE MODE — paste your book pitch, we extract hooks */}
-          {mode === "generate" && (
+          {/* EXTRACT + AI MODES — paste your book pitch */}
+          {(mode === "extract" || mode === "ai") && (
             <div className="space-y-3">
               <div className="space-y-2">
                 <Label htmlFor="pitch" className="text-sm font-semibold">
-                  Paste your book&apos;s pitch or blurb
+                  {mode === "ai" ? "Paste your book's pitch — AI will rewrite it into hooks" : "Paste your book's pitch or blurb"}
                 </Label>
                 <Textarea
                   id="pitch"
@@ -233,19 +250,33 @@ export function UploadModal({
               </div>
               <Button
                 type="button"
-                onClick={generateFromPitch}
+                onClick={() => generateFromPitch(mode === "ai")}
                 disabled={generating || pitch.trim().length < 10}
-                className="w-full bg-amber-400 text-black hover:bg-amber-300 font-bold py-2.5"
+                className={cn(
+                  "w-full font-bold py-2.5",
+                  mode === "ai"
+                    ? "bg-violet-500 text-white hover:bg-violet-600"
+                    : "bg-amber-400 text-black hover:bg-amber-300"
+                )}
               >
                 {generating ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Finding hooks…
+                    {mode === "ai" ? "AI is writing hooks…" : "Finding hooks…"}
                   </>
                 ) : (
                   <>
-                    <Wand2 className="w-4 h-4 mr-2" />
-                    Generate hooks from pitch
+                    {mode === "ai" ? (
+                      <>
+                        <span className="mr-1">🤖</span>
+                        Generate AI hooks
+                      </>
+                    ) : (
+                      <>
+                        <Wand2 className="w-4 h-4 mr-2" />
+                        Extract hooks from pitch
+                      </>
+                    )}
                   </>
                 )}
               </Button>
@@ -256,6 +287,11 @@ export function UploadModal({
                   <div className="text-xs font-semibold text-white/70 flex items-center gap-1.5">
                     <Check className="w-3.5 h-3.5 text-emerald-400" />
                     Pick your favorite ({suggestedHooks.length} candidates)
+                    {hookSource === "ai" && (
+                      <span className="ml-1 px-1.5 py-0.5 rounded-full bg-violet-500/20 border border-violet-500/40 text-violet-300 text-[9px] font-bold">
+                        🤖 AI-rewritten
+                      </span>
+                    )}
                   </div>
                   <div className="space-y-1.5">
                     {suggestedHooks.map((h, i) => (

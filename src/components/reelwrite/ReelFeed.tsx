@@ -24,7 +24,7 @@ interface ReelFeedProps {
   onOpenComments: (reel: ReelWithRelations) => void;
   onOpenProfile: (writerId: string) => void;
   onShare: (reel: ReelWithRelations) => void;
-  onSave: (reelId: string) => void;
+  onSave: (reel: ReelWithRelations) => void;
   loading?: boolean;
 }
 

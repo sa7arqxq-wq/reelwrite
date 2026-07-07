@@ -68,7 +68,7 @@ interface ReelCardProps {
   onOpenComments: (reel: ReelWithRelations) => void;
   onOpenProfile: (writerId: string) => void;
   onShare: (reel: ReelWithRelations) => void;
-  onSave: (reelId: string) => void;
+  onSave: (reel: ReelWithRelations) => void;
 }
 
 function formatCount(n: number): string {
@@ -403,7 +403,7 @@ export function ReelCard({
           onClick={(e) => {
             e.stopPropagation();
             setSaved((s) => !s);
-            onSave(reel.id);
+            onSave(reel);
           }}
           aria-label="Save"
         >

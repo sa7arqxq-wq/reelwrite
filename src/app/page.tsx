@@ -195,11 +195,26 @@ export default function Home() {
     setDmOpen(true);
   }
 
-  function handleSave(reelId: string) {
-    toast({
-      title: "Saved to your library",
-      description: "Find it later in your profile.",
-    });
+  function handleSave(reel: ReelWithRelations) {
+    // Toggle save in the background
+    fetch(`/api/reels/${reel.id}/save`, { method: "POST" })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.ok) {
+          setReels((prev) =>
+            prev.map((r) =>
+              r.id === reel.id
+                ? { ...r, saves: r.saves + (data.saved ? 1 : -1) }
+                : r
+            )
+          );
+          toast({
+            title: data.saved ? "Saved to your library" : "Removed from library",
+            description: data.saved ? "Find it in the Saved tab on your profile." : "",
+          });
+        }
+      })
+      .catch(() => {});
   }
 
   function handleUploadCreated() {

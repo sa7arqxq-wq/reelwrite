@@ -47,6 +47,7 @@ model User {
   followsTo     Follow[]  @relation("followee")
   conversations ConversationParticipant[]
   messagesSent  DirectMessage[]
+  savedReels    SavedReel[]
 }
 
 model Book {
@@ -92,6 +93,7 @@ model Reel {
   book        Book?    @relation(fields: [bookId], references: [id])
   likeRows    Like[]
   commentRows Comment[]
+  savedBy     SavedReel[]
 }
 
 model Like {
@@ -107,14 +109,20 @@ model Like {
 }
 
 model Comment {
-  id        String   @id @default(cuid())
-  reelId    String
-  userId    String
-  text      String
-  createdAt DateTime @default(now())
+  id               String    @id @default(cuid())
+  reelId           String
+  userId           String
+  text             String
+  parentCommentId  String?   // null = top-level comment, set = reply to another comment
+  createdAt        DateTime  @default(now())
 
-  reel      Reel @relation(fields: [reelId], references: [id], onDelete: Cascade)
-  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reel             Reel      @relation(fields: [reelId], references: [id], onDelete: Cascade)
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent           Comment?  @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
+  replies          Comment[] @relation("CommentReplies")
+
+  @@index([reelId])
+  @@index([parentCommentId])
 }
 
 model Follow {
@@ -127,6 +135,18 @@ model Follow {
   followee    User @relation("followee", fields: [followeeId], references: [id], onDelete: Cascade)
 
   @@unique([followerId, followeeId])
+}
+
+model SavedReel {
+  id        String   @id @default(cuid())
+  userId    String
+  reelId    String
+  createdAt DateTime @default(now())
+
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reel      Reel @relation(fields: [reelId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, reelId])
 }
 
 // Security monitoring — logs every intrusion attempt and tracks blocked IPs

@@ -499,6 +499,69 @@ export function ProfileView({ writerId, isMe, currentUserId, onEditBio, onOpenDM
           </p>
         </div>
       )}
+
+      {/* Saved reels — only visible on your own profile */}
+      {isMe && <SavedReelsSection />}
+
     </div>
+  );
+}
+
+// Saved reels section — fetches and displays reels the writer has saved
+function SavedReelsSection() {
+  const [savedReels, setSavedReels] = useState<ProfileReel[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/me/saved")
+      .then((r) => r.json())
+      .then((data) => setSavedReels(data.reels || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return null;
+  if (savedReels.length === 0) return null;
+
+  return (
+    <section className="px-4 mb-6">
+      <button
+        onClick={() => setExpanded((e) => !e)}
+        className="flex items-center justify-between w-full mb-2"
+      >
+        <h2 className="text-sm font-bold uppercase tracking-wider text-white/55 flex items-center gap-1.5">
+          <span>🔖</span> Saved reels
+          <span className="text-white/40 font-normal normal-case">({savedReels.length})</span>
+        </h2>
+        <span className="text-xs text-white/40">{expanded ? "Hide" : "Show"}</span>
+      </button>
+      {expanded && (
+        <div className="grid grid-cols-3 gap-1.5">
+          {savedReels.map((r) => {
+            const mood = MOODS[(r.mood as keyof typeof MOODS) || "amber"];
+            return (
+              <div
+                key={r.id}
+                className="relative aspect-[9/14] rounded-md overflow-hidden border border-white/10"
+                style={{ background: `linear-gradient(160deg, ${mood.from}, ${mood.to})` }}
+              >
+                <div className="absolute inset-0 p-2 flex flex-col justify-between">
+                  <div
+                    className="text-[10px] font-serif font-bold leading-tight line-clamp-4"
+                    style={{ color: mood.accent }}
+                  >
+                    {r.hook}
+                  </div>
+                  <div className="text-[8px] text-white/60">
+                    ❤️ {formatCount(r.likes)}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
   );
 }

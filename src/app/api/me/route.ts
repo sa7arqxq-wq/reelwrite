@@ -22,6 +22,7 @@ export async function GET() {
       email: user.email,
       avatarColor: user.avatarColor,
       avatarEmoji: user.avatarEmoji,
+      image: user.image,
       bio: user.bio,
       role: user.role,
       banned: user.banned,

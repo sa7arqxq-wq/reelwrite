@@ -97,6 +97,7 @@ export async function getSessionUser(): Promise<{
   banned: boolean;
   avatarColor: string;
   avatarEmoji: string;
+  image: string | null;
   bio: string;
   followers: number;
   following: number;

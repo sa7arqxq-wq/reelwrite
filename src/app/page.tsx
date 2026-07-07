@@ -38,6 +38,7 @@ interface Me {
   email: string;
   avatarColor: string;
   avatarEmoji: string;
+  image?: string | null;
   bio: string;
   role: string;
   banned: boolean;

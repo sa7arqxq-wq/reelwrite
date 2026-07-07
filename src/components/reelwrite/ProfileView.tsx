@@ -14,7 +14,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, BookOpen, ExternalLink, Settings, PenLine } from "lucide-react";
+import { Loader2, BookOpen, ExternalLink, Settings, PenLine, Camera, Loader2 as Spinner } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { compressImage } from "@/lib/image-compress";
 import { BookCover } from "./BookCover";
 import { MOODS } from "@/lib/moods";
 import { Button } from "@/components/ui/button";
@@ -60,6 +62,7 @@ interface WriterProfile {
   bio: string;
   avatarColor: string;
   avatarEmoji: string;
+  image?: string | null;
   followers: number;
   following: number;
   reelsCount: number;
@@ -86,6 +89,8 @@ export function ProfileView({ writerId, isMe, onEditBio }: ProfileViewProps) {
   const [editingBio, setEditingBio] = useState(false);
   const [bioDraft, setBioDraft] = useState("");
   const [following, setFollowing] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     setLoading(true);
@@ -106,17 +111,94 @@ export function ProfileView({ writerId, isMe, onEditBio }: ProfileViewProps) {
     );
   }
 
+  async function handlePhotoUpload(file: File) {
+    setUploadingPhoto(true);
+    try {
+      const dataUrl = await compressImage(file, 400, 0.85);
+      const res = await fetch("/api/me/profile-image", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: dataUrl }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast({
+          title: "Upload failed",
+          description: data.error || "Could not update photo",
+          variant: "destructive",
+        });
+        return;
+      }
+      setProfile((p) => p ? { ...p, image: data.image } : p);
+      toast({ title: "Profile photo updated ✨" });
+    } catch (e) {
+      toast({
+        title: "Upload failed",
+        description: e instanceof Error ? e.message : "Could not process image",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingPhoto(false);
+    }
+  }
+
+  async function handleRemovePhoto() {
+    setUploadingPhoto(true);
+    try {
+      await fetch("/api/me/profile-image", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: null }),
+      });
+      setProfile((p) => p ? { ...p, image: null } : p);
+      toast({ title: "Profile photo removed" });
+    } finally {
+      setUploadingPhoto(false);
+    }
+  }
+
   return (
     <div className="no-scrollbar h-full overflow-y-auto pt-20 pb-24">
       {/* Header */}
       <div className="px-4 pb-4">
         <div className="flex items-start gap-4">
-          <span
-            className="flex w-20 h-20 shrink-0 rounded-full items-center justify-center text-3xl ring-4 ring-white/10"
-            style={{ background: profile.avatarColor }}
-          >
-            {profile.avatarEmoji}
-          </span>
+          {/* Profile photo — with upload button if it's your profile */}
+          <div className="relative shrink-0">
+            {profile.image ? (
+              <img
+                src={profile.image}
+                alt={profile.displayName}
+                className="w-20 h-20 rounded-full object-cover ring-4 ring-white/10"
+              />
+            ) : (
+              <span
+                className="flex w-20 h-20 shrink-0 rounded-full items-center justify-center text-3xl ring-4 ring-white/10"
+                style={{ background: profile.avatarColor }}
+              >
+                {profile.avatarEmoji}
+              </span>
+            )}
+            {isMe && (
+              <label className="absolute -bottom-1 -right-1 cursor-pointer">
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handlePhotoUpload(file);
+                  }}
+                />
+                <span className="flex w-8 h-8 rounded-full bg-amber-400 items-center justify-center text-black shadow-lg hover:bg-amber-300 transition-colors">
+                  {uploadingPhoto ? (
+                    <Spinner className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Camera className="w-4 h-4" />
+                  )}
+                </span>
+              </label>
+            )}
+          </div>
           <div className="min-w-0 flex-1 pt-1">
             <h1 className="text-xl font-bold truncate">{profile.displayName}</h1>
             <p className="text-sm text-white/50 truncate">@{profile.username}</p>

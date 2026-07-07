@@ -34,13 +34,15 @@ export interface ReelWithRelations {
   views: number;
   liked?: boolean;
   featured?: boolean;
-  background?: string; // "mood" | "cover"
+  background?: string; // "mood" | "cover" | "image"
+  backgroundImage?: string | null; // base64 data URL or https URL
   author: {
     id: string;
     username: string;
     displayName: string;
     avatarColor: string;
     avatarEmoji: string;
+    image?: string | null;
     bio: string;
     followers: number;
   };
@@ -88,6 +90,8 @@ export function ReelCard({
   const mood = getMood(reel.mood);
   const moodData = MOODS[mood];
   const useCoverBackground = reel.background === "cover" && reel.book;
+  const useImageBackground = reel.background === "image" && (reel as ReelWithRelations & { backgroundImage?: string | null }).backgroundImage;
+  const backgroundImageUrl = (reel as ReelWithRelations & { backgroundImage?: string | null }).backgroundImage;
   const cover = reel.book;
   const lines = reel.hookLines.split("\n").filter(Boolean);
   const [paused, setPaused] = useState(false);
@@ -123,16 +127,40 @@ export function ReelCard({
     <section
       className="snap-item relative h-full w-full overflow-hidden flex items-center justify-center"
       style={
-        useCoverBackground
-          ? {
-              background: `radial-gradient(120% 100% at 50% 0%, ${cover!.coverColor} 0%, #050505 80%, #000000 100%)`,
-            }
-          : {
-              background: `radial-gradient(120% 100% at 50% 0%, ${moodData.to} 0%, ${moodData.from} 70%, #050505 100%)`,
-            }
+        useImageBackground
+          ? { background: "#050505" }
+          : useCoverBackground
+            ? {
+                background: `radial-gradient(120% 100% at 50% 0%, ${cover!.coverColor} 0%, #050505 80%, #000000 100%)`,
+              }
+            : {
+                background: `radial-gradient(120% 100% at 50% 0%, ${moodData.to} 0%, ${moodData.from} 70%, #050505 100%)`,
+              }
       }
       onClick={() => setPaused((p) => !p)}
     >
+      {/* Image-background mode: render the uploaded/URL image as full-bleed background */}
+      {useImageBackground && backgroundImageUrl && (
+        <>
+          <img
+            src={backgroundImageUrl}
+            alt=""
+            className="pointer-events-none absolute inset-0 w-full h-full object-cover"
+            onError={(e) => {
+              // If image fails to load, hide it and fall back to mood gradient
+              (e.target as HTMLImageElement).style.display = "none";
+            }}
+          />
+          {/* Dark overlay for text contrast */}
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/50 via-black/40 to-black/70" />
+          {/* Mood accent glow on top of image */}
+          <div
+            className="pointer-events-none absolute -top-1/3 left-1/2 -translate-x-1/2 w-[120%] h-[80%] rounded-full opacity-20 blur-3xl"
+            style={{ background: `radial-gradient(circle, ${moodData.accent} 0%, transparent 70%)` }}
+          />
+        </>
+      )}
+
       {/* Cover-background mode: render a giant blurred book cover behind the text */}
       {useCoverBackground && (
         <>
@@ -284,12 +312,20 @@ export function ReelCard({
           }}
           aria-label={`View ${reel.author.displayName}'s profile`}
         >
-          <span
-            className="flex w-12 h-12 rounded-full items-center justify-center text-xl ring-2 ring-white/40"
-            style={{ background: reel.author.avatarColor }}
-          >
-            {reel.author.avatarEmoji}
-          </span>
+          {reel.author.image ? (
+            <img
+              src={reel.author.image}
+              alt={reel.author.displayName}
+              className="w-12 h-12 rounded-full object-cover ring-2 ring-white/40"
+            />
+          ) : (
+            <span
+              className="flex w-12 h-12 rounded-full items-center justify-center text-xl ring-2 ring-white/40"
+              style={{ background: reel.author.avatarColor }}
+            >
+              {reel.author.avatarEmoji}
+            </span>
+          )}
           <span
             className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full flex items-center justify-center text-xs text-black font-bold"
             style={{ background: accentColor }}

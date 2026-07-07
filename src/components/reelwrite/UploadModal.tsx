@@ -26,10 +26,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Timer, Sparkles, Loader2, Check, Wand2 } from "lucide-react";
+import { Timer, Sparkles, Loader2, Check, Wand2, ImageIcon, Link2 } from "lucide-react";
 import { MOODS, MOOD_LIST, type Mood } from "@/lib/moods";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { compressImage, validateImageUrl } from "@/lib/image-compress";
 
 interface UploadModalProps {
   open: boolean;
@@ -47,7 +48,9 @@ export function UploadModal({
   const [hook, setHook] = useState("");
   const [caption, setCaption] = useState("");
   const [mood, setMood] = useState<Mood>("amber");
-  const [background, setBackground] = useState<"mood" | "cover">("mood");
+  const [background, setBackground] = useState<"mood" | "cover" | "image">("mood");
+  const [backgroundImage, setBackgroundImage] = useState<string>("");
+  const [imageUploading, setImageUploading] = useState(false);
   const [bookTitle, setBookTitle] = useState("");
   const [bookGenre, setBookGenre] = useState("Fiction");
   const [bookLink, setBookLink] = useState("");
@@ -124,6 +127,41 @@ export function UploadModal({
     }
   }
 
+  async function handleImageUpload(file: File) {
+    setImageUploading(true);
+    try {
+      const dataUrl = await compressImage(file, 1080, 0.8);
+      setBackgroundImage(dataUrl);
+      setBackground("image");
+      toast({ title: "Image uploaded", description: `${Math.round(dataUrl.length * 0.75 / 1024)}KB — ready to use.` });
+    } catch (e) {
+      toast({
+        title: "Upload failed",
+        description: e instanceof Error ? e.message : "Could not process image",
+        variant: "destructive",
+      });
+    } finally {
+      setImageUploading(false);
+    }
+  }
+
+  async function handleImageUrl() {
+    const url = prompt("Paste an image URL (https://…):");
+    if (!url) return;
+    try {
+      const valid = await validateImageUrl(url);
+      setBackgroundImage(valid);
+      setBackground("image");
+      toast({ title: "Image URL set", description: "Using image from URL." });
+    } catch (e) {
+      toast({
+        title: "Invalid URL",
+        description: e instanceof Error ? e.message : "Could not use that URL",
+        variant: "destructive",
+      });
+    }
+  }
+
   async function submit() {
     if (!hook.trim() || isOver) return;
     setSubmitting(true);
@@ -137,7 +175,8 @@ export function UploadModal({
           caption: caption.trim(),
           mood,
           duration: 7,
-          background: bookTitle.trim() ? background : "mood",
+          background: bookTitle.trim() || background === "image" ? background : "mood",
+          backgroundImage: background === "image" ? backgroundImage : undefined,
           bookTitle: bookTitle.trim() || undefined,
           bookGenre,
           bookLink,
@@ -152,6 +191,7 @@ export function UploadModal({
       setBookGenre("Fiction");
       setMood("amber");
       setBackground("mood");
+      setBackgroundImage("");
       setMode("manual");
       setPitch("");
       setSuggestedHooks([]);
@@ -459,42 +499,112 @@ export function UploadModal({
               />
             </div>
 
-            {/* Background choice — only shown when a book title is entered */}
-            {bookTitle.trim() && (
-              <div className="space-y-2 pt-1">
-                <Label className="text-xs font-semibold">Reel background</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setBackground("mood")}
-                    className={cn(
-                      "rounded-lg p-2.5 text-left border transition-all",
-                      background === "mood"
-                        ? "border-amber-400 ring-2 ring-amber-400/30 bg-amber-400/5"
-                        : "border-white/10 hover:border-white/30"
-                    )}
-                  >
-                    <div className="text-base">🎨</div>
-                    <div className="text-xs font-semibold mt-0.5">Mood gradient</div>
-                    <div className="text-[10px] text-white/50">Use the mood color palette</div>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setBackground("cover")}
-                    className={cn(
-                      "rounded-lg p-2.5 text-left border transition-all",
-                      background === "cover"
-                        ? "border-amber-400 ring-2 ring-amber-400/30 bg-amber-400/5"
-                        : "border-white/10 hover:border-white/30"
-                    )}
-                  >
-                    <div className="text-base">📖</div>
-                    <div className="text-xs font-semibold mt-0.5">Book cover</div>
-                    <div className="text-[10px] text-white/50">Use your book cover as the backdrop</div>
-                  </button>
-                </div>
+            {/* Background choice — always shown */}
+            <div className="space-y-2 pt-1">
+              <Label className="text-xs font-semibold">Reel background</Label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setBackground("mood")}
+                  className={cn(
+                    "rounded-lg p-2.5 text-left border transition-all",
+                    background === "mood"
+                      ? "border-amber-400 ring-2 ring-amber-400/30 bg-amber-400/5"
+                      : "border-white/10 hover:border-white/30"
+                  )}
+                >
+                  <div className="text-base">🎨</div>
+                  <div className="text-xs font-semibold mt-0.5">Mood</div>
+                  <div className="text-[9px] text-white/50">Color gradient</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBackground("cover")}
+                  disabled={!bookTitle.trim()}
+                  className={cn(
+                    "rounded-lg p-2.5 text-left border transition-all",
+                    background === "cover"
+                      ? "border-amber-400 ring-2 ring-amber-400/30 bg-amber-400/5"
+                      : "border-white/10 hover:border-white/30",
+                    !bookTitle.trim() && "opacity-40 cursor-not-allowed"
+                  )}
+                >
+                  <div className="text-base">📖</div>
+                  <div className="text-xs font-semibold mt-0.5">Book cover</div>
+                  <div className="text-[9px] text-white/50">{bookTitle.trim() ? "Use cover" : "Add book first"}</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBackground("image")}
+                  className={cn(
+                    "rounded-lg p-2.5 text-left border transition-all",
+                    background === "image"
+                      ? "border-amber-400 ring-2 ring-amber-400/30 bg-amber-400/5"
+                      : "border-white/10 hover:border-white/30"
+                  )}
+                >
+                  <div className="text-base">🖼️</div>
+                  <div className="text-xs font-semibold mt-0.5">Image</div>
+                  <div className="text-[9px] text-white/50">Upload or URL</div>
+                </button>
               </div>
-            )}
+
+              {/* Image background controls */}
+              {background === "image" && (
+                <div className="space-y-2 pt-1">
+                  {backgroundImage ? (
+                    <div className="relative rounded-lg overflow-hidden border border-white/10">
+                      <img
+                        src={backgroundImage}
+                        alt="Background preview"
+                        className="w-full h-32 object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setBackgroundImage("")}
+                        className="absolute top-1.5 right-1.5 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-bold text-white hover:bg-rose-500"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : null}
+                  <div className="flex gap-2">
+                    <label className="flex-1 cursor-pointer">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleImageUpload(file);
+                        }}
+                      />
+                      <span className={cn(
+                        "flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition-colors",
+                        "bg-amber-400/15 text-amber-400 hover:bg-amber-400/25",
+                        imageUploading && "opacity-50 pointer-events-none"
+                      )}>
+                        {imageUploading ? (
+                          <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Processing…</>
+                        ) : (
+                          <><ImageIcon className="w-3.5 h-3.5" /> Upload from phone</>
+                        )}
+                      </span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleImageUrl}
+                      className="flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold bg-white/5 text-white/70 hover:bg-white/10 transition-colors"
+                    >
+                      <Link2 className="w-3.5 h-3.5" /> Paste URL
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-white/40">
+                    Upload any image from your device, or paste a URL from the internet. Image is resized to max 1080px.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
 
           <Button

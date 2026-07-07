@@ -79,8 +79,9 @@ model Reel {
   shares      Int      @default(0)
   saves       Int      @default(0)
   views       Int      @default(0)
-  featured    Boolean  @default(false)
-  background  String   @default("mood") // "mood" (gradient) | "cover" (book cover as background)
+  featured      Boolean  @default(false)
+  background    String   @default("mood") // "mood" (gradient) | "cover" (book cover) | "image" (custom uploaded/URL image)
+  backgroundImage String? // base64 data URL or https URL when background === "image"
   createdAt   DateTime @default(now())
 
   author      User     @relation(fields: [authorId], references: [id])

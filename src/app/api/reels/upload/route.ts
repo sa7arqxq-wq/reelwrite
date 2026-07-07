@@ -40,6 +40,7 @@ export async function POST(req: NextRequest) {
     mood,
     duration,
     background,
+    backgroundImage,
     bookId,
     bookTitle,
     bookGenre,
@@ -143,7 +144,10 @@ export async function POST(req: NextRequest) {
       caption: captionV.value,
       mood: moodV.value,
       duration: 7, // Always 7 — brand promise
-      background: background === "cover" ? "cover" : "mood",
+      background: background === "cover" ? "cover" : background === "image" ? "image" : "mood",
+      backgroundImage: background === "image" && typeof backgroundImage === "string" && backgroundImage.length < 3_000_000
+        ? (backgroundImage.startsWith("data:image/") || backgroundImage.startsWith("https://") ? backgroundImage : null)
+        : null,
     },
     include: { author: true, book: true },
   });

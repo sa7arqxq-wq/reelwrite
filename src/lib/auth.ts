@@ -29,6 +29,66 @@ export const authOptions: NextAuthOptions = {
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   secret,
+  // Let NextAuth auto-detect the host from request headers.
+  trustHost: true,
+  // Custom cookie names — this invalidates ALL old cookies from
+  // previous sign-in attempts that were causing REQUEST_HEADER_TOO_LARGE.
+  // Using shorter cookie names also reduces header size.
+  cookies: {
+    sessionToken: {
+      name: "rw-session",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: true,
+      },
+    },
+    callbackUrl: {
+      name: "rw-callback",
+      options: {
+        sameSite: "lax",
+        path: "/",
+        secure: true,
+      },
+    },
+    csrfToken: {
+      name: "rw-csrf",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: true,
+      },
+    },
+    pkceCodeVerifier: {
+      name: "rw-pkce",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: true,
+      },
+    },
+    state: {
+      name: "rw-state",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: true,
+      },
+    },
+    nonce: {
+      name: "rw-nonce",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: true,
+      },
+    },
+  },
   providers: [
     // Google OAuth — requires GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET env vars
     ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
@@ -58,11 +118,11 @@ export const authOptions: NextAuthOptions = {
         const valid = await bcrypt.compare(credentials.password, user.passwordHash);
         if (!valid) return null;
 
+        // Only return the id — keep the JWT small to avoid
+        // REQUEST_HEADER_TOO_LARGE errors on Vercel.
+        // The full user data is fetched in getSessionUser() via /api/me
         return {
           id: user.id,
-          email: user.email,
-          name: user.displayName,
-          image: user.image,
         };
       },
     }),

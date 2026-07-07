@@ -69,7 +69,7 @@ export function DMModal({ open, onOpenChange, currentUserId, targetUserId }: DMM
   useEffect(() => {
     if (open && targetUserId) {
       setError("");
-      fetch(`/api/dm/conversations/${targetUserId}`)
+      fetch(`/api/dm/start/${targetUserId}`)
         .then((r) => r.json())
         .then((d) => {
           if (d.conversationId) {

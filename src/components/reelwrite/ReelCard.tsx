@@ -92,6 +92,8 @@ export function ReelCard({
   const useCoverBackground = reel.background === "cover" && reel.book;
   const useImageBackground = reel.background === "image" && (reel as ReelWithRelations & { backgroundImage?: string | null }).backgroundImage;
   const backgroundImageUrl = (reel as ReelWithRelations & { backgroundImage?: string | null }).backgroundImage;
+  const useVideoBackground = reel.background === "video" && reel.videoUrl;
+  const videoUrl = reel.videoUrl;
   const cover = reel.book;
   const lines = reel.hookLines.split("\n").filter(Boolean);
   const [paused, setPaused] = useState(false);
@@ -127,18 +129,42 @@ export function ReelCard({
     <section
       className="snap-item relative h-full w-full overflow-hidden flex items-center justify-center"
       style={
-        useImageBackground
+        useVideoBackground
           ? { background: "#050505" }
-          : useCoverBackground
-            ? {
-                background: `radial-gradient(120% 100% at 50% 0%, ${cover!.coverColor} 0%, #050505 80%, #000000 100%)`,
-              }
-            : {
-                background: `radial-gradient(120% 100% at 50% 0%, ${moodData.to} 0%, ${moodData.from} 70%, #050505 100%)`,
-              }
+          : useImageBackground
+            ? { background: "#050505" }
+            : useCoverBackground
+              ? {
+                  background: `radial-gradient(120% 100% at 50% 0%, ${cover!.coverColor} 0%, #050505 80%, #000000 100%)`,
+                }
+              : {
+                  background: `radial-gradient(120% 100% at 50% 0%, ${moodData.to} 0%, ${moodData.from} 70%, #050505 100%)`,
+                }
       }
       onClick={() => setPaused((p) => !p)}
     >
+      {/* Video-background mode: render the uploaded video as full-bleed background */}
+      {useVideoBackground && videoUrl && (
+        <>
+          <video
+            src={videoUrl}
+            className="pointer-events-none absolute inset-0 w-full h-full object-cover"
+            autoPlay
+            loop
+            muted
+            playsInline
+            preload="auto"
+          />
+          {/* Dark overlay for text contrast */}
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/60" />
+          {/* Mood accent glow */}
+          <div
+            className="pointer-events-none absolute -top-1/3 left-1/2 -translate-x-1/2 w-[120%] h-[80%] rounded-full opacity-15 blur-3xl"
+            style={{ background: `radial-gradient(circle, ${moodData.accent} 0%, transparent 70%)` }}
+          />
+        </>
+      )}
+
       {/* Image-background mode: render the uploaded/URL image as full-bleed background */}
       {useImageBackground && backgroundImageUrl && (
         <>

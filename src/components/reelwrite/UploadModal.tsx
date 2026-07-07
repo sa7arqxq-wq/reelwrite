@@ -26,11 +26,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Timer, Sparkles, Loader2, Check, Wand2, ImageIcon, Link2 } from "lucide-react";
+import { Timer, Sparkles, Loader2, Check, Wand2, ImageIcon, Link2, Video, Film } from "lucide-react";
 import { MOODS, MOOD_LIST, type Mood } from "@/lib/moods";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { compressImage, validateImageUrl } from "@/lib/image-compress";
+import { validateAndReadVideo } from "@/lib/video-validate";
 
 interface UploadModalProps {
   open: boolean;
@@ -48,9 +49,12 @@ export function UploadModal({
   const [hook, setHook] = useState("");
   const [caption, setCaption] = useState("");
   const [mood, setMood] = useState<Mood>("amber");
-  const [background, setBackground] = useState<"mood" | "cover" | "image">("mood");
+  const [background, setBackground] = useState<"mood" | "cover" | "image" | "video">("mood");
   const [backgroundImage, setBackgroundImage] = useState<string>("");
+  const [videoData, setVideoData] = useState<string>("");
+  const [videoMeta, setVideoMeta] = useState<{ duration: number; sizeMB: number } | null>(null);
   const [imageUploading, setImageUploading] = useState(false);
+  const [videoUploading, setVideoUploading] = useState(false);
   const [bookTitle, setBookTitle] = useState("");
   const [bookGenre, setBookGenre] = useState("Fiction");
   const [bookLink, setBookLink] = useState("");
@@ -162,6 +166,36 @@ export function UploadModal({
     }
   }
 
+  async function handleVideoUpload(file: File) {
+    setVideoUploading(true);
+    try {
+      const { validation, dataUrl } = await validateAndReadVideo(file);
+      if (!validation.ok || !dataUrl) {
+        toast({
+          title: "Video rejected",
+          description: validation.error || "Could not process video",
+          variant: "destructive",
+        });
+        return;
+      }
+      setVideoData(dataUrl);
+      setVideoMeta({ duration: validation.duration!, sizeMB: validation.sizeMB! });
+      setBackground("video");
+      toast({
+        title: "Video ready ✨",
+        description: `${validation.duration!.toFixed(1)}s · ${validation.sizeMB!.toFixed(1)}MB`,
+      });
+    } catch (e) {
+      toast({
+        title: "Upload failed",
+        description: e instanceof Error ? e.message : "Could not process video",
+        variant: "destructive",
+      });
+    } finally {
+      setVideoUploading(false);
+    }
+  }
+
   async function submit() {
     if (!hook.trim() || isOver) return;
     setSubmitting(true);
@@ -175,8 +209,9 @@ export function UploadModal({
           caption: caption.trim(),
           mood,
           duration: 7,
-          background: bookTitle.trim() || background === "image" ? background : "mood",
+          background: bookTitle.trim() || background === "image" || background === "video" ? background : "mood",
           backgroundImage: background === "image" ? backgroundImage : undefined,
+          videoUrl: background === "video" ? videoData : undefined,
           bookTitle: bookTitle.trim() || undefined,
           bookGenre,
           bookLink,
@@ -192,6 +227,8 @@ export function UploadModal({
       setMood("amber");
       setBackground("mood");
       setBackgroundImage("");
+      setVideoData("");
+      setVideoMeta(null);
       setMode("manual");
       setPitch("");
       setSuggestedHooks([]);
@@ -502,50 +539,60 @@ export function UploadModal({
             {/* Background choice — always shown */}
             <div className="space-y-2 pt-1">
               <Label className="text-xs font-semibold">Reel background</Label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-4 gap-2">
                 <button
                   type="button"
                   onClick={() => setBackground("mood")}
                   className={cn(
-                    "rounded-lg p-2.5 text-left border transition-all",
+                    "rounded-lg p-2 text-left border transition-all",
                     background === "mood"
                       ? "border-amber-400 ring-2 ring-amber-400/30 bg-amber-400/5"
                       : "border-white/10 hover:border-white/30"
                   )}
                 >
-                  <div className="text-base">🎨</div>
-                  <div className="text-xs font-semibold mt-0.5">Mood</div>
-                  <div className="text-[9px] text-white/50">Color gradient</div>
+                  <div className="text-sm">🎨</div>
+                  <div className="text-[11px] font-semibold mt-0.5">Mood</div>
                 </button>
                 <button
                   type="button"
                   onClick={() => setBackground("cover")}
                   disabled={!bookTitle.trim()}
                   className={cn(
-                    "rounded-lg p-2.5 text-left border transition-all",
+                    "rounded-lg p-2 text-left border transition-all",
                     background === "cover"
                       ? "border-amber-400 ring-2 ring-amber-400/30 bg-amber-400/5"
                       : "border-white/10 hover:border-white/30",
                     !bookTitle.trim() && "opacity-40 cursor-not-allowed"
                   )}
                 >
-                  <div className="text-base">📖</div>
-                  <div className="text-xs font-semibold mt-0.5">Book cover</div>
-                  <div className="text-[9px] text-white/50">{bookTitle.trim() ? "Use cover" : "Add book first"}</div>
+                  <div className="text-sm">📖</div>
+                  <div className="text-[11px] font-semibold mt-0.5">Cover</div>
                 </button>
                 <button
                   type="button"
                   onClick={() => setBackground("image")}
                   className={cn(
-                    "rounded-lg p-2.5 text-left border transition-all",
+                    "rounded-lg p-2 text-left border transition-all",
                     background === "image"
                       ? "border-amber-400 ring-2 ring-amber-400/30 bg-amber-400/5"
                       : "border-white/10 hover:border-white/30"
                   )}
                 >
-                  <div className="text-base">🖼️</div>
-                  <div className="text-xs font-semibold mt-0.5">Image</div>
-                  <div className="text-[9px] text-white/50">Upload or URL</div>
+                  <div className="text-sm">🖼️</div>
+                  <div className="text-[11px] font-semibold mt-0.5">Image</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBackground("video")}
+                  className={cn(
+                    "rounded-lg p-2 text-left border transition-all",
+                    background === "video"
+                      ? "border-amber-400 ring-2 ring-amber-400/30 bg-amber-400/5"
+                      : "border-white/10 hover:border-white/30"
+                  )}
+                >
+                  <div className="text-sm">🎬</div>
+                  <div className="text-[11px] font-semibold mt-0.5">Video</div>
                 </button>
               </div>
 
@@ -601,6 +648,60 @@ export function UploadModal({
                   </div>
                   <p className="text-[10px] text-white/40">
                     Upload any image from your device, or paste a URL from the internet. Image is resized to max 1080px.
+                  </p>
+                </div>
+              )}
+
+              {/* Video background controls */}
+              {background === "video" && (
+                <div className="space-y-2 pt-1">
+                  {videoData ? (
+                    <div className="relative rounded-lg overflow-hidden border border-white/10">
+                      <video
+                        src={videoData}
+                        className="w-full h-32 object-cover"
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                      />
+                      {videoMeta && (
+                        <div className="absolute top-1.5 left-1.5 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-bold text-amber-400">
+                          {videoMeta.duration.toFixed(1)}s · {videoMeta.sizeMB.toFixed(1)}MB
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => { setVideoData(""); setVideoMeta(null); }}
+                        className="absolute top-1.5 right-1.5 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-bold text-white hover:bg-rose-500"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : null}
+                  <label className={cn(
+                    "flex items-center justify-center gap-1.5 rounded-lg py-2.5 text-xs font-semibold transition-colors cursor-pointer",
+                    "bg-amber-400/15 text-amber-400 hover:bg-amber-400/25",
+                    videoUploading && "opacity-50 pointer-events-none"
+                  )}>
+                    <input
+                      type="file"
+                      accept="video/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleVideoUpload(file);
+                      }}
+                    />
+                    {videoUploading ? (
+                      <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Processing video…</>
+                    ) : (
+                      <><Film className="w-3.5 h-3.5" /> Upload 7-second video from phone</>
+                    )}
+                  </label>
+                  <p className="text-[10px] text-white/40">
+                    Upload a video that&apos;s <strong>7 seconds or shorter</strong> and <strong>5MB or smaller</strong>.
+                    MP4 works best. The video loops as your reel background with the hook text overlaid.
                   </p>
                 </div>
               )}

@@ -16,7 +16,7 @@
  * All write endpoints should run their inputs through these before touching the DB.
  */
 
-const MAX_HOOK_LENGTH = 280;
+const MAX_HOOK_LENGTH = 5000;
 const MAX_CAPTION_LENGTH = 280;
 const MAX_COMMENT_LENGTH = 500;
 const MAX_USERNAME_LENGTH = 30;

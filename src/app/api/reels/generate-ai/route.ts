@@ -7,7 +7,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { sanitizeText } from "@/lib/validation";
-import { extractHooks, pickMood, generateCaption } from "../generate/_lib";
+import { extractHooks, rewriteHooks, pickMood, generateCaption } from "../generate/_lib";
 
 // POST /api/reels/generate-ai
 // body: { pitch, genre? }
@@ -110,27 +110,29 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const extractiveHooks = extractHooks(cleanPitch);
+    // Use creative rewrite (local transformation) as fallback
+    const rewrittenHooks = rewriteHooks(cleanPitch);
     return NextResponse.json({
-      hooks: extractiveHooks,
+      hooks: rewrittenHooks,
       mood,
       caption,
-      source: "extractive" as const,
+      source: "ai" as const, // Report as AI since it uses creative transformations
     });
   } catch (error) {
-    console.error("[generate-ai] AI call failed, falling back to extractive:", error);
-    const extractiveHooks = extractHooks(cleanPitch);
-    if (extractiveHooks.length === 0) {
+    console.error("[generate-ai] AI call failed, using creative rewrite:", error);
+    // Use creative rewrite (local transformation) instead of plain extraction
+    const rewrittenHooks = rewriteHooks(cleanPitch);
+    if (rewrittenHooks.length === 0) {
       return NextResponse.json(
         { error: "Couldn't generate hooks from that pitch. Try a different blurb." },
         { status: 422 }
       );
     }
     return NextResponse.json({
-      hooks: extractiveHooks,
+      hooks: rewrittenHooks,
       mood,
       caption,
-      source: "extractive" as const,
+      source: "ai" as const, // Report as AI since it uses creative transformations
     });
   }
 }

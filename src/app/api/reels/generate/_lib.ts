@@ -130,6 +130,109 @@ export function extractHooks(pitch: string): string[] {
   return result;
 }
 
+/**
+ * Creative rewrite — transforms extracted sentences into new hook variations.
+ * This runs locally (no AI API needed) and produces genuinely different hooks
+ * by restructuring, compressing, and combining ideas from the pitch.
+ */
+export function rewriteHooks(pitch: string): string[] {
+  const clean = sanitizeText(pitch);
+  if (!clean) return [];
+
+  const sentences = clean
+    .split(/(?<=[.!?])\s+|(?<=—)\s+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0 && s.length < 300);
+
+  if (sentences.length === 0) return [];
+
+  // Start with the best extracted hooks
+  const extracted = extractHooks(clean);
+  const result: string[] = [...extracted];
+
+  // Add creative transformations
+  const transforms: string[] = [];
+
+  // 1. Staccato: take the punchiest sentence and break it into fragments
+  if (extracted.length > 0) {
+    const best = extracted[0];
+    const words = best.split(/\s+/);
+    if (words.length > 6) {
+      // Find a natural break point (after "but", "and", comma)
+      const breakIdx = words.findIndex((w, i) => i > 2 && /^(but|and|until|when|then)$/i.test(w));
+      if (breakIdx > 2 && breakIdx < words.length - 2) {
+        const part1 = words.slice(0, breakIdx).join(" ").replace(/[,.]$/, "");
+        const part2 = words.slice(breakIdx).join(" ");
+        transforms.push(`${part1}. ${part2}.`);
+      }
+    }
+  }
+
+  // 2. Question: turn a statement into a question
+  if (sentences.length > 0) {
+    const s = sentences[0];
+    if (s.includes(" must ") || s.includes(" had to ") || s.includes(" needed to ")) {
+      const q = s.replace(/^(She|He|They|It|The|When|After)\s+/i, "What happens when ");
+      transforms.push(q.replace(/[.!]$/, "?"));
+    }
+  }
+
+  // 3. Reversal: swap the order of clauses
+  if (extracted.length > 1) {
+    const parts = extracted[0].split(/,\s+/);
+    if (parts.length === 2) {
+      transforms.push(`${parts[1].trim()}. ${parts[0].trim()}.`);
+    }
+  }
+
+  // 4. Compression: take the longest sentence and shorten it
+  if (sentences.length > 1) {
+    const longest = sentences.reduce((a, b) => a.length > b.length ? a : b);
+    const words = longest.split(/\s+/);
+    if (words.length > 10) {
+      // Take first 8 words
+      transforms.push(words.slice(0, 8).join(" ") + "...");
+    }
+  }
+
+  // 5. Combine: merge two short sentences into one
+  if (sentences.length >= 2) {
+    const s1 = sentences[0].replace(/[.!]$/, "");
+    const s2 = sentences[1].replace(/[.!]$/, "");
+    if (s1.length < 80 && s2.length < 80) {
+      transforms.push(`${s1}. ${s2}.`);
+    }
+  }
+
+  // Add unique transforms to results
+  for (const t of transforms) {
+    if (result.length >= 5) break;
+    if (t.length < 6 || t.length > 200) continue;
+    const isDup = result.some((existing) => {
+      const words1 = new Set(existing.toLowerCase().split(/\s+/));
+      const words2 = new Set(t.toLowerCase().split(/\s+/));
+      let common = 0;
+      for (const w of words2) if (words1.has(w)) common++;
+      return common / Math.min(words1.size, words2.size) > 0.7;
+    });
+    if (!isDup) {
+      result.push(t);
+    }
+  }
+
+  // Ensure we have at least 3 hooks
+  while (result.length < 3 && sentences.length > result.length) {
+    const next = sentences[result.length];
+    if (next && next.length > 10 && next.length < 200) {
+      result.push(next);
+    } else {
+      break;
+    }
+  }
+
+  return result.slice(0, 5);
+}
+
 export function pickMood(pitch: string, genre?: string): string {
   const lower = pitch.toLowerCase();
 

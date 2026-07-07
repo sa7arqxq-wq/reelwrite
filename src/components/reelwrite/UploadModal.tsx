@@ -70,7 +70,7 @@ export function UploadModal({
   const [hookSource, setHookSource] = useState<"extract" | "ai" | null>(null);
   const { toast } = useToast();
 
-  const HOOK_LIMIT = 180;
+  const HOOK_LIMIT = 5000;
   const isOver = hook.length > HOOK_LIMIT;
 
   async function generateFromPitch(useAI: boolean) {
@@ -700,8 +700,8 @@ export function UploadModal({
                     )}
                   </label>
                   <p className="text-[10px] text-white/40">
-                    Upload a video that&apos;s <strong>7 seconds or shorter</strong> and <strong>5MB or smaller</strong>.
-                    MP4 works best. The video loops as your reel background with the hook text overlaid.
+                    Upload any video that&apos;s <strong>7 seconds or shorter</strong> and <strong>10MB or smaller</strong>.
+                    Any format works (MP4, MOV, WEBM, etc). The video loops as your reel background with the hook text overlaid.
                   </p>
                 </div>
               )}

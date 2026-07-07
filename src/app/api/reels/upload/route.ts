@@ -149,7 +149,7 @@ export async function POST(req: NextRequest) {
       backgroundImage: background === "image" && typeof backgroundImage === "string" && backgroundImage.length < 5_000_000
         ? (backgroundImage.startsWith("data:image/") || backgroundImage.startsWith("https://") ? backgroundImage : null)
         : null,
-      videoUrl: background === "video" && typeof videoUrl === "string" && videoUrl.length < 7_000_000
+      videoUrl: background === "video" && typeof videoUrl === "string" && videoUrl.length < 14_000_000
         ? (videoUrl.startsWith("data:video/") || videoUrl.startsWith("https://") ? videoUrl : null)
         : null,
     },

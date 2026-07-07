@@ -11,7 +11,7 @@
  */
 
 const MAX_DURATION_SECONDS = 7;
-const MAX_FILE_SIZE_MB = 5;
+const MAX_FILE_SIZE_MB = 10;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
 export interface VideoValidationResult {
@@ -61,7 +61,7 @@ export async function validateAndReadVideo(file: File): Promise<{ validation: Vi
       resolve({ ok: true, duration, sizeMB });
     };
     video.onerror = () => {
-      resolve({ ok: false, error: "Could not load video. Try a different format (MP4 works best)." });
+      resolve({ ok: false, error: "Could not load this video. Try a different video file." });
     };
     video.src = URL.createObjectURL(file);
   });

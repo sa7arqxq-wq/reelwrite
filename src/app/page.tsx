@@ -24,12 +24,14 @@ import { ProfileView } from "@/components/reelwrite/ProfileView";
 import { AdminView } from "@/components/reelwrite/AdminView";
 import { LandingView } from "@/components/reelwrite/LandingView";
 import { ShareSheet } from "@/components/reelwrite/ShareSheet";
+import { SocialShareSheet } from "@/components/reelwrite/SocialShareSheet";
+import { DMModal } from "@/components/reelwrite/DMModal";
 import { OwnershipNotice } from "@/components/reelwrite/OwnershipNotice";
 import { AuthModal } from "@/components/reelwrite/AuthModal";
 import type { ReelWithRelations } from "@/components/reelwrite/ReelCard";
 import { useToast } from "@/hooks/use-toast";
 import { signOut } from "next-auth/react";
-import { Sparkles, Shield, LogOut } from "lucide-react";
+import { Sparkles, Shield, LogOut, MessageCircle } from "lucide-react";
 
 interface Me {
   id: string;
@@ -64,6 +66,10 @@ export default function Home() {
   const [ownershipOpen, setOwnershipOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [meLoading, setMeLoading] = useState(true);
+  const [dmOpen, setDmOpen] = useState(false);
+  const [dmTargetUserId, setDmTargetUserId] = useState<string | null>(null);
+  const [socialShareOpen, setSocialShareOpen] = useState(false);
+  const [socialShareReel, setSocialShareReel] = useState<ReelWithRelations | null>(null);
   // Landing page: show on first visit (or until the user dismisses it)
   const [showLanding, setShowLanding] = useState(true);
   const { toast } = useToast();
@@ -176,9 +182,17 @@ export default function Home() {
         );
       })
       .catch(() => {});
-    // Open the share sheet
+    // Open the QR card share sheet
     setShareReel(reel);
     setShareOpen(true);
+    // Also open the social share sheet
+    setSocialShareReel(reel);
+    setSocialShareOpen(true);
+  }
+
+  function handleOpenDM(userId: string) {
+    setDmTargetUserId(userId);
+    setDmOpen(true);
   }
 
   function handleSave(reelId: string) {
@@ -241,8 +255,18 @@ export default function Home() {
 
   return (
     <main className="relative h-[100dvh] w-full overflow-hidden bg-[#0a0a0a]">
-      {/* Floating buttons: Sign out + Protected + About */}
+      {/* Floating buttons: DM + Sign out + Protected + About */}
       <div className="absolute top-3 right-3 z-40 flex items-center gap-1.5">
+        {me && (
+          <button
+            onClick={() => { setDmTargetUserId(null); setDmOpen(true); }}
+            className="flex items-center gap-1 rounded-full bg-black/50 backdrop-blur-md border border-white/10 px-2.5 py-1 text-[10px] font-semibold text-white/70 hover:text-amber-400 hover:border-amber-400/40 transition-colors"
+            aria-label="Direct messages"
+          >
+            <MessageCircle className="w-3 h-3" />
+            DMs
+          </button>
+        )}
         {me && (
           <button
             onClick={() => {
@@ -337,7 +361,9 @@ export default function Home() {
           <ProfileView
             writerId={profileId}
             isMe={profileId === me?.id}
+            currentUserId={me?.id || ""}
             onEditBio={handleEditBio}
+            onOpenDM={handleOpenDM}
           />
         </>
       )}
@@ -390,6 +416,21 @@ export default function Home() {
       <OwnershipNotice
         open={ownershipOpen}
         onOpenChange={setOwnershipOpen}
+      />
+
+      {/* Social share sheet (Instagram, TikTok, Threads, X, WhatsApp, etc) */}
+      <SocialShareSheet
+        open={socialShareOpen}
+        onOpenChange={setSocialShareOpen}
+        reel={socialShareReel}
+      />
+
+      {/* DM modal */}
+      <DMModal
+        open={dmOpen}
+        onOpenChange={setDmOpen}
+        currentUserId={me?.id || ""}
+        targetUserId={dmTargetUserId}
       />
 
       {/* Auth modal — shown when user needs to sign in or sign up */}

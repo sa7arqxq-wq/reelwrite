@@ -14,13 +14,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, BookOpen, ExternalLink, Settings, PenLine, Camera, Loader2 as Spinner } from "lucide-react";
+import { Loader2, BookOpen, ExternalLink, Settings, PenLine, Camera, Loader2 as Spinner, Trash2, Archive, Pencil, Lock, Unlock, MessageCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { compressImage } from "@/lib/image-compress";
 import { BookCover } from "./BookCover";
 import { MOODS } from "@/lib/moods";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 interface ProfileReel {
@@ -31,6 +32,7 @@ interface ProfileReel {
   views: number;
   comments: number;
   createdAt: string;
+  archived?: boolean;
   book: {
     title: string;
     subtitle: string;
@@ -63,6 +65,7 @@ interface WriterProfile {
   avatarColor: string;
   avatarEmoji: string;
   image?: string | null;
+  isPrivate?: boolean;
   followers: number;
   following: number;
   reelsCount: number;
@@ -73,7 +76,9 @@ interface WriterProfile {
 interface ProfileViewProps {
   writerId: string;
   isMe: boolean;
+  currentUserId?: string;
   onEditBio?: (newBio: string) => void;
+  onOpenDM?: (userId: string) => void;
   onOpenReelInFeed?: (reelId: string) => void;
 }
 
@@ -83,7 +88,7 @@ function formatCount(n: number): string {
   return String(n);
 }
 
-export function ProfileView({ writerId, isMe, onEditBio }: ProfileViewProps) {
+export function ProfileView({ writerId, isMe, currentUserId, onEditBio, onOpenDM }: ProfileViewProps) {
   const [profile, setProfile] = useState<WriterProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [editingBio, setEditingBio] = useState(false);
@@ -272,26 +277,65 @@ export function ProfileView({ writerId, isMe, onEditBio }: ProfileViewProps) {
         {/* CTA */}
         <div className="mt-4 flex gap-2">
           {isMe ? (
-            <Button
-              variant="outline"
-              className="border-white/20 text-white hover:bg-white/10 flex-1"
-              onClick={() => setEditingBio(true)}
-            >
-              <Settings className="w-4 h-4 mr-2" />
-              Edit profile
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                className="border-white/20 text-white hover:bg-white/10 flex-1"
+                onClick={() => setEditingBio(true)}
+              >
+                <Settings className="w-4 h-4 mr-2" />
+                Edit profile
+              </Button>
+              <Button
+                variant="outline"
+                className={cn(
+                  "border-white/20 hover:bg-white/10",
+                  profile.isPrivate ? "text-amber-400" : "text-white/70"
+                )}
+                onClick={async () => {
+                  try {
+                    const res = await fetch("/api/me/privacy", {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ isPrivate: !profile.isPrivate }),
+                    });
+                    const data = await res.json();
+                    if (data.ok) {
+                      setProfile((p) => p ? { ...p, isPrivate: data.isPrivate } : p);
+                      toast({
+                        title: data.isPrivate ? "Account is now private 🔒" : "Account is now public 🔓",
+                      });
+                    }
+                  } catch {
+                    toast({ title: "Could not update privacy", variant: "destructive" });
+                  }
+                }}
+                title={profile.isPrivate ? "Account is private" : "Account is public"}
+              >
+                {profile.isPrivate ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
+              </Button>
+            </>
           ) : (
-            <Button
-              className={cn(
-                "flex-1 font-bold",
-                following
-                  ? "bg-white/10 text-white hover:bg-white/15"
-                  : "bg-amber-400 text-black hover:bg-amber-300"
-              )}
-              onClick={() => setFollowing((f) => !f)}
-            >
-              {following ? "Following" : "Follow"}
-            </Button>
+            <>
+              <Button
+                className={cn(
+                  "flex-1 font-bold",
+                  following
+                    ? "bg-white/10 text-white hover:bg-white/15"
+                    : "bg-amber-400 text-black hover:bg-amber-300"
+                )}
+                onClick={() => setFollowing((f) => !f)}
+              >
+                {following ? "Following" : "Follow"}
+              </Button>
+              <Button
+                variant="outline"
+                className="border-white/20 text-white hover:bg-white/10"
+                onClick={() => onOpenDM?.(profile.id)}
+              >
+                <MessageCircle className="w-4 h-4" />
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -308,7 +352,10 @@ export function ProfileView({ writerId, isMe, onEditBio }: ProfileViewProps) {
               return (
                 <div
                   key={r.id}
-                  className="relative aspect-[9/14] rounded-md overflow-hidden border border-white/10"
+                  className={cn(
+                    "relative aspect-[9/14] rounded-md overflow-hidden border border-white/10 group",
+                    r.archived && "opacity-40"
+                  )}
                   style={{
                     background: `linear-gradient(160deg, ${mood.from}, ${mood.to})`,
                   }}
@@ -322,8 +369,72 @@ export function ProfileView({ writerId, isMe, onEditBio }: ProfileViewProps) {
                     </div>
                     <div className="text-[8px] text-white/60 flex items-center gap-1">
                       <span>❤️ {formatCount(r.likes)}</span>
+                      {r.archived && <span className="text-amber-400">📦 Archived</span>}
                     </div>
                   </div>
+                  {/* Reel management buttons — only on your own profile */}
+                  {isMe && (
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1.5">
+                      <button
+                        onClick={async () => {
+                          const newHook = prompt("Edit your hook:", r.hook);
+                          if (newHook && newHook !== r.hook) {
+                            const res = await fetch(`/api/reels/${r.id}/edit`, {
+                              method: "PATCH",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ hook: newHook }),
+                            });
+                            if (res.ok) {
+                              toast({ title: "Reel edited ✏️" });
+                              setProfile((p) => p ? {
+                                ...p,
+                                reels: p.reels.map((rr) => rr.id === r.id ? { ...rr, hook: newHook } : rr)
+                              } : p);
+                            }
+                          }
+                        }}
+                        className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30"
+                        title="Edit"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={async () => {
+                          const res = await fetch(`/api/reels/${r.id}/archive`, { method: "POST" });
+                          if (res.ok) {
+                            const data = await res.json();
+                            toast({ title: data.archived ? "Reel archived 📦" : "Reel unarchived" });
+                            setProfile((p) => p ? {
+                              ...p,
+                              reels: p.reels.map((rr) => rr.id === r.id ? { ...rr, archived: data.archived } : rr)
+                            } : p);
+                          }
+                        }}
+                        className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30"
+                        title={r.archived ? "Unarchive" : "Archive"}
+                      >
+                        <Archive className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (!confirm("Delete this reel permanently?")) return;
+                          const res = await fetch(`/api/reels/${r.id}/delete`, { method: "DELETE" });
+                          if (res.ok) {
+                            toast({ title: "Reel deleted 🗑️", variant: "destructive" });
+                            setProfile((p) => p ? {
+                              ...p,
+                              reels: p.reels.filter((rr) => rr.id !== r.id),
+                              reelsCount: p.reelsCount - 1,
+                            } : p);
+                          }
+                        }}
+                        className="w-8 h-8 rounded-full bg-rose-500/30 flex items-center justify-center text-rose-400 hover:bg-rose-500/50"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })}

@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
   } else {
     // For You: featured first, then by recency
     reels = await db.reel.findMany({
-      orderBy: [{ featured: "desc" }, { createdAt: "desc" }],
+      orderBy: [{ createdAt: "desc" }],
       take: 20,
       include: { author: true, book: true },
     });

@@ -83,12 +83,16 @@ export default function Home() {
   const loadMe = useCallback(() => {
     setMeLoading(true);
     fetch("/api/me")
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error("Request failed");
+        return r.json();
+      })
       .then((data) => setMe(data.me))
       .catch(() => {
+        // Only show error toast on actual network failure, not on null session
         toast({
-          title: "Could not load your session",
-          description: "Please reload the page.",
+          title: "Connection issue",
+          description: "Could not reach the server. Check your internet and retry.",
           variant: "destructive",
         });
       })

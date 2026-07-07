@@ -32,6 +32,7 @@ interface AuthModalProps {
 export function AuthModal({ open, onOpenChange, onSuccess }: AuthModalProps) {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const { toast } = useToast();
 
   // Sign-in form state
@@ -47,70 +48,71 @@ export function AuthModal({ open, onOpenChange, onSuccess }: AuthModalProps) {
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    const result = await signIn("credentials", {
-      email: signinEmail,
-      password: signinPassword,
-      redirect: false,
-    });
-    setLoading(false);
-    if (result?.error) {
-      toast({
-        title: "Sign in failed",
-        description: "Check your email and password.",
-        variant: "destructive",
+    setErrorMessage("");
+    try {
+      const result = await signIn("credentials", {
+        email: signinEmail,
+        password: signinPassword,
+        redirect: false,
       });
-      return;
+      if (result?.error) {
+        setErrorMessage("Wrong email or password. Try again.");
+        return;
+      }
+      toast({ title: "Welcome back ✨", description: "You're signed in." });
+      onOpenChange(false);
+      onSuccess();
+    } catch {
+      setErrorMessage("Network error. Check your internet and try again.");
+    } finally {
+      setLoading(false);
     }
-    toast({ title: "Welcome back ✨", description: "You're signed in." });
-    onOpenChange(false);
-    onSuccess();
   }
 
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    const res = await fetch("/api/auth/signup", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    setErrorMessage("");
+    try {
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: signupEmail,
+          password: signupPassword,
+          username: signupUsername,
+          displayName: signupDisplayName,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setErrorMessage(data.error || "Something went wrong.");
+        return;
+      }
+      // Auto sign-in after signup
+      const result = await signIn("credentials", {
         email: signupEmail,
         password: signupPassword,
-        username: signupUsername,
-        displayName: signupDisplayName,
-      }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
+        redirect: false,
+      });
+      if (result?.error) {
+        // Account created but auto sign-in failed — switch to sign-in tab
+        setErrorMessage("Account created! Please sign in with your email and password.");
+        setMode("signin");
+        setSigninEmail(signupEmail);
+        return;
+      }
+      toast({
+        title: "Welcome to ReelWrite ✨",
+        description: "Your writer account is ready.",
+      });
+      onOpenChange(false);
+      onSuccess();
+    } catch {
+      setErrorMessage("Network error. Check your internet and try again.");
+    } finally {
       setLoading(false);
-      toast({
-        title: "Sign up failed",
-        description: data.error || "Something went wrong.",
-        variant: "destructive",
-      });
-      return;
     }
-    // Auto sign-in after signup
-    const result = await signIn("credentials", {
-      email: signupEmail,
-      password: signupPassword,
-      redirect: false,
-    });
-    setLoading(false);
-    if (result?.error) {
-      toast({
-        title: "Account created — please sign in",
-        description: "Your account is ready. Sign in with your email and password.",
-      });
-      setMode("signin");
-      setSigninEmail(signupEmail);
-      return;
-    }
-    toast({
-      title: "Welcome to ReelWrite ✨",
-      description: "Your writer account is ready.",
-    });
-    onOpenChange(false);
-    onSuccess();
   }
 
   return (
@@ -128,7 +130,7 @@ export function AuthModal({ open, onOpenChange, onSuccess }: AuthModalProps) {
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={mode} onValueChange={(v) => setMode(v as "signin" | "signup")}>
+        <Tabs value={mode} onValueChange={(v) => { setMode(v as "signin" | "signup"); setErrorMessage(""); }}>
           <TabsList className="grid w-full grid-cols-2 bg-white/5 border border-white/10">
             <TabsTrigger
               value="signin"
@@ -143,6 +145,13 @@ export function AuthModal({ open, onOpenChange, onSuccess }: AuthModalProps) {
               Sign Up
             </TabsTrigger>
           </TabsList>
+
+          {/* Visible error message */}
+          {errorMessage && (
+            <div className="mt-3 rounded-lg bg-rose-500/10 border border-rose-500/30 px-3 py-2 text-sm text-rose-300">
+              {errorMessage}
+            </div>
+          )}
 
           {/* SIGN IN */}
           <TabsContent value="signin" className="mt-4">

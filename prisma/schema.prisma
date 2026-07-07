@@ -33,6 +33,7 @@ model User {
   isWriter      Boolean   @default(true)
   role          String    @default("USER") // USER | ADMIN
   banned        Boolean   @default(false)
+  isPrivate     Boolean   @default(false) // private accounts hide their reels from non-followers
   followers     Int       @default(0)
   following     Int       @default(0)
   reelsCount    Int       @default(0)
@@ -44,6 +45,8 @@ model User {
   comments      Comment[]
   followsFrom   Follow[]  @relation("follower")
   followsTo     Follow[]  @relation("followee")
+  conversations ConversationParticipant[]
+  messagesSent  DirectMessage[]
 }
 
 model Book {
@@ -82,6 +85,7 @@ model Reel {
   featured      Boolean  @default(false)
   background    String   @default("mood") // "mood" (gradient) | "cover" (book cover) | "image" (custom uploaded/URL image)
   backgroundImage String? // base64 data URL or https URL when background === "image"
+  archived      Boolean  @default(false) // archived reels are hidden from feed but kept on profile
   createdAt   DateTime @default(now())
 
   author      User     @relation(fields: [authorId], references: [id])
@@ -150,4 +154,39 @@ model BlockedIp {
   reason    String
   expiresAt DateTime
   createdAt DateTime @default(now())
+}
+
+// DM system — conversations between 2 users
+model Conversation {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  participants ConversationParticipant[]
+  messages     DirectMessage[]
+}
+
+model ConversationParticipant {
+  id              String       @id @default(cuid())
+  conversationId  String
+  userId          String
+  lastReadAt      DateTime     @default(now())
+
+  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+}
+
+model DirectMessage {
+  id             String       @id @default(cuid())
+  conversationId String
+  senderId       String
+  text           String
+  createdAt      DateTime     @default(now())
+
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
 }

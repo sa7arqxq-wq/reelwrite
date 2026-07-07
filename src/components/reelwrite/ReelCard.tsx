@@ -253,8 +253,10 @@ export function ReelCard({
         </div>
       )}
 
-      {/* Kinetic typography — the heart of the reel */}
-      <div className="relative z-10 w-full max-w-md px-6 pl-6 pr-20 text-center" key={animKey}>
+      {/* Kinetic typography — the heart of the reel.
+          Positioned in the UPPER portion of the screen so it never overlaps
+          with the author username and book info card at the bottom. */}
+      <div className="relative z-10 w-full max-w-md px-6 pl-6 pr-20 text-center flex flex-col justify-center items-center" style={{ position: 'absolute', top: '12%', bottom: '38%' }} key={animKey}>
         <AnimatePresence mode="wait">
           <motion.div
             key={cycle}
@@ -274,7 +276,7 @@ export function ReelCard({
                   filter: "blur(0px)",
                   transition: { delay: i * lineDelay / 1000, duration: 0.6, ease: [0.22, 1, 0.36, 1] },
                 }}
-                className="font-serif text-3xl sm:text-4xl font-bold leading-tight tracking-tight"
+                className="font-serif text-2xl sm:text-3xl font-bold leading-tight tracking-tight"
                 style={{ color: "#fafaf9", textShadow: `0 2px 20px ${accentColor}55` }}
               >
                 {line}

@@ -52,9 +52,9 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
-  if (pitch.length > 2000) {
+  if (pitch.length > 5000) {
     return NextResponse.json(
-      { error: "Pitch must be 2000 characters or fewer" },
+      { error: "Pitch must be 5000 characters or fewer" },
       { status: 400 }
     );
   }
@@ -64,8 +64,25 @@ export async function POST(req: NextRequest) {
   const caption = generateCaption(genre);
 
   try {
-    const ZAI = (await import("z-ai-web-dev-sdk")).default;
-    const zai = await ZAI.create();
+    const ZAIModule = await import("z-ai-web-dev-sdk");
+    const ZAI = ZAIModule.default;
+
+    // Try ZAI.create() first (works in sandbox where .z-ai-config exists)
+    // If that fails, construct directly from env vars (works on Vercel)
+    let zai;
+    try {
+      zai = await ZAI.create();
+    } catch {
+      // Fall back to env vars for production (Vercel)
+      const baseUrl = process.env.Z_AI_BASE_URL || "https://internal-api.z.ai/v1";
+      const apiKey = process.env.Z_AI_API_KEY;
+      const token = process.env.Z_AI_TOKEN;
+      const userId = process.env.Z_AI_USER_ID;
+      if (!apiKey || !token) {
+        throw new Error("Z_AI_API_KEY and Z_AI_TOKEN env vars not set");
+      }
+      zai = new ZAI({ baseUrl, apiKey, token, userId, chatId: "" });
+    }
 
     const completion = await zai.chat.completions.create({
       messages: [

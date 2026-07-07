@@ -285,7 +285,7 @@ export function UploadModal({
                   <span className="text-white/45">
                     We&apos;ll extract the punchiest lines as 7-second hook candidates.
                   </span>
-                  <span className="text-white/45 font-mono">{pitch.length}/2000</span>
+                  <span className="text-white/45 font-mono">{pitch.length}/5000</span>
                 </div>
               </div>
               <Button

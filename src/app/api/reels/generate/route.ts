@@ -26,9 +26,9 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
-  if (pitch.length > 2000) {
+  if (pitch.length > 5000) {
     return NextResponse.json(
-      { error: "Pitch must be 2000 characters or fewer" },
+      { error: "Pitch must be 5000 characters or fewer" },
       { status: 400 }
     );
   }

@@ -23,6 +23,7 @@ import { DiscoverView } from "@/components/reelwrite/DiscoverView";
 import { ProfileView } from "@/components/reelwrite/ProfileView";
 import { AdminView } from "@/components/reelwrite/AdminView";
 import { UpgradeView } from "@/components/reelwrite/UpgradeView";
+import { StoryBar, StoryViewer } from "@/components/reelwrite/Stories";
 import { LandingView } from "@/components/reelwrite/LandingView";
 import { ShareSheet } from "@/components/reelwrite/ShareSheet";
 import { SocialShareSheet } from "@/components/reelwrite/SocialShareSheet";
@@ -71,6 +72,8 @@ export default function Home() {
   const [dmTargetUserId, setDmTargetUserId] = useState<string | null>(null);
   const [socialShareOpen, setSocialShareOpen] = useState(false);
   const [socialShareReel, setSocialShareReel] = useState<ReelWithRelations | null>(null);
+  const [storyViewerUser, setStoryViewerUser] = useState<any>(null);
+  const [storyViewerOpen, setStoryViewerOpen] = useState(false);
   // Landing page: show on first visit (or until the user dismisses it)
   const [showLanding, setShowLanding] = useState(true);
   const { toast } = useToast();
@@ -325,6 +328,15 @@ export default function Home() {
       {view === "feed" && (
         <>
           <TopBar activeTab={feed} onTabChange={setFeed} />
+          {/* Story bar — Instagram-style horizontal circles */}
+          {me && feed === "for-you" && (
+            <div className="absolute top-14 left-0 right-0 z-20 bg-gradient-to-b from-black/60 to-transparent pb-2">
+              <StoryBar
+                currentUserId={me.id}
+                onOpenStory={(su) => { setStoryViewerUser(su); setStoryViewerOpen(true); }}
+              />
+            </div>
+          )}
           <ReelFeed
             reels={reels}
             currentUserId={me?.id || ""}
@@ -455,6 +467,13 @@ export default function Home() {
         onOpenChange={setDmOpen}
         currentUserId={me?.id || ""}
         targetUserId={dmTargetUserId}
+      />
+
+      {/* Story viewer — full-screen */}
+      <StoryViewer
+        storyUser={storyViewerUser}
+        open={storyViewerOpen}
+        onClose={() => setStoryViewerOpen(false)}
       />
 
       {/* Auth modal — shown when user needs to sign in or sign up */}

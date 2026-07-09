@@ -343,9 +343,15 @@ export function ProfileView({ writerId, isMe, currentUserId, onEditBio, onOpenDM
       {/* Reels grid */}
       {profile.reels.length > 0 && (
         <section className="px-4 mb-6">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-white/55 mb-2">
-            7-second reels
-          </h2>
+          <div className="flex items-center gap-2 mb-2">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-white/55">
+              🎬 My Reels
+            </h2>
+            <span className="text-[10px] text-white/35">({profile.reels.length})</span>
+            {isMe && profile.reels.some(r => r.archived) && (
+              <span className="text-[10px] text-amber-400/70 ml-auto">📦 {profile.reels.filter(r => r.archived).length} archived</span>
+            )}
+          </div>
           <div className="grid grid-cols-3 gap-1.5">
             {profile.reels.map((r) => {
               const mood = MOODS[(r.mood as keyof typeof MOODS) || "amber"];
@@ -501,6 +507,11 @@ export function ProfileView({ writerId, isMe, currentUserId, onEditBio, onOpenDM
       )}
 
       {/* Saved reels — only visible on your own profile */}
+      {isMe && (
+        <div className="px-4 mb-2">
+          <div className="h-px bg-white/10 my-4" />
+        </div>
+      )}
       {isMe && <SavedReelsSection />}
 
     </div>
@@ -528,13 +539,13 @@ function SavedReelsSection() {
     <section className="px-4 mb-6">
       <button
         onClick={() => setExpanded((e) => !e)}
-        className="flex items-center justify-between w-full mb-2"
+        className="flex items-center justify-between w-full mb-2 bg-amber-400/10 rounded-lg px-3 py-2 border border-amber-400/20"
       >
-        <h2 className="text-sm font-bold uppercase tracking-wider text-white/55 flex items-center gap-1.5">
-          <span>🔖</span> Saved reels
-          <span className="text-white/40 font-normal normal-case">({savedReels.length})</span>
+        <h2 className="text-sm font-bold text-amber-400 flex items-center gap-2">
+          🔖 Saved Reels
+          <span className="text-white/40 font-normal">({savedReels.length})</span>
         </h2>
-        <span className="text-xs text-white/40">{expanded ? "Hide" : "Show"}</span>
+        <span className="text-xs text-amber-400/70">{expanded ? "▲ Hide" : "▼ Show"}</span>
       </button>
       {expanded && (
         <div className="grid grid-cols-3 gap-1.5">

@@ -52,6 +52,7 @@ model User {
   conversations ConversationParticipant[]
   messagesSent  DirectMessage[]
   savedReels    SavedReel[]
+  stories       Story[]
 }
 
 model Book {
@@ -213,4 +214,23 @@ model DirectMessage {
   sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
 
   @@index([conversationId, createdAt])
+}
+
+// Stories — Instagram-style temporary posts that expire after 24 hours
+model Story {
+  id          String   @id @default(cuid())
+  userId      String
+  text        String   // the story text/quote
+  mood        String   @default("amber")
+  background  String   @default("mood") // mood | cover | image
+  backgroundImage String?
+  bookId      String?
+  viewedBy    String   @default("[]") // JSON array of user IDs who viewed
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime // 24 hours after creation
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([expiresAt])
 }

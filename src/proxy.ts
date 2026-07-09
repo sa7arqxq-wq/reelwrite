@@ -135,7 +135,6 @@ export async function proxy(req: NextRequest) {
     if (shouldBlock) {
       inMemoryBlocklist.add(ip);
       // Auto-expire after 1 hour
-      setTimeout(() => inMemoryBlocklist.delete(ip), 60 * 60 * 1000);
     }
     return new NextResponse("Not Found", { status: 404, headers: { "Content-Security-Policy": CSP } });
   }
@@ -145,7 +144,6 @@ export async function proxy(req: NextRequest) {
   if (attack.type) {
     if (attack.severity === "CRITICAL") {
       inMemoryBlocklist.add(ip);
-      setTimeout(() => inMemoryBlocklist.delete(ip), 60 * 60 * 1000);
     }
     return new NextResponse(
       JSON.stringify({ error: "Forbidden" }),

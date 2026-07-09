@@ -1,26 +1,15 @@
-/*
- * ReelWrite — 7-second reels for writers
- * Copyright (c) 2026 ReelWrite. All rights reserved.
- *
- * PROPRIETARY AND CONFIDENTIAL
- * This source code is the proprietary work of ReelWrite. No part of this
- * software may be copied, reproduced, distributed, or used to create
- * derivative works without the express written permission of ReelWrite.
- * Unauthorized use, duplication, or distribution is prohibited.
- *
- * For licensing inquiries: legal@reelwrite.app
- */
-
 import { PrismaClient } from '@prisma/client'
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
+// In production (Vercel), use a singleton to avoid connection pool exhaustion
+// In development, use global to avoid multiple instances on hot reload
 export const db =
   globalForPrisma.prisma ??
   new PrismaClient({
-    log: ['query'],
+    log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
   })
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db

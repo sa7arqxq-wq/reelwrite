@@ -13,10 +13,10 @@
 
 "use client";
 
-import { Home, Compass, Plus, User, Shield } from "lucide-react";
+import { Home, Compass, Plus, User, Shield, Crown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type BottomNavView = "feed" | "discover" | "upload" | "profile" | "admin";
+export type BottomNavView = "feed" | "discover" | "upload" | "profile" | "admin" | "upgrade";
 
 interface BottomNavProps {
   active: BottomNavView;
@@ -30,6 +30,7 @@ export function BottomNav({ active, onChange, isAdmin }: BottomNavProps) {
     { id: "discover", label: "Discover", icon: Compass },
     { id: "upload", label: "Create", icon: Plus },
     { id: "profile", label: "Profile", icon: User },
+    { id: "upgrade", label: "Pro", icon: Crown },
     ...(isAdmin
       ? [{ id: "admin" as BottomNavView, label: "Admin", icon: Shield }]
       : []),
@@ -43,6 +44,7 @@ export function BottomNav({ active, onChange, isAdmin }: BottomNavProps) {
           const isActive = active === item.id;
           const isUpload = item.id === "upload";
           const isAdmin = item.id === "admin";
+          const isUpgrade = item.id === "upgrade";
           return (
             <button
               key={item.id}
@@ -69,10 +71,14 @@ export function BottomNav({ active, onChange, isAdmin }: BottomNavProps) {
                     isActive
                       ? isAdmin
                         ? "text-rose-400"
-                        : "text-amber-400"
+                        : isUpgrade
+                          ? "text-amber-400"
+                          : "text-amber-400"
                       : isAdmin
                         ? "text-rose-400/60"
-                        : "text-white/55"
+                        : isUpgrade
+                          ? "text-amber-400/60"
+                          : "text-white/55"
                   )}
                   strokeWidth={isActive ? 2.4 : 1.8}
                 />

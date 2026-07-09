@@ -22,6 +22,7 @@ import { UploadModal } from "@/components/reelwrite/UploadModal";
 import { DiscoverView } from "@/components/reelwrite/DiscoverView";
 import { ProfileView } from "@/components/reelwrite/ProfileView";
 import { AdminView } from "@/components/reelwrite/AdminView";
+import { UpgradeView } from "@/components/reelwrite/UpgradeView";
 import { LandingView } from "@/components/reelwrite/LandingView";
 import { ShareSheet } from "@/components/reelwrite/ShareSheet";
 import { SocialShareSheet } from "@/components/reelwrite/SocialShareSheet";
@@ -392,6 +393,11 @@ export default function Home() {
           currentUserId={me.id}
           onOpenProfile={handleOpenProfile}
         />
+      )}
+
+      {/* UPGRADE view */}
+      {view === "upgrade" && me && (
+        <UpgradeView currentUserId={me.id} />
       )}
 
       {/* Bottom navigation — Create tab opens the modal */}

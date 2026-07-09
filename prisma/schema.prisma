@@ -34,6 +34,10 @@ model User {
   role          String    @default("USER") // USER | ADMIN
   banned        Boolean   @default(false)
   isPrivate     Boolean   @default(false) // private accounts hide their reels from non-followers
+  subscriptionTier String @default("FREE") // FREE | PRO
+  subscriptionExpires DateTime? // when PRO expires (null = never or not PRO)
+  reelsThisMonth Int     @default(0) // resets monthly — tracks free tier limit
+  reelsMonthReset DateTime? // when to reset reelsThisMonth
   followers     Int       @default(0)
   following     Int       @default(0)
   reelsCount    Int       @default(0)

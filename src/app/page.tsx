@@ -254,22 +254,25 @@ export default function Home() {
   // LANDING VIEW — full-screen, shown on first visit
   if (showLanding) {
     return (
-      <main className="relative h-[100dvh] w-full overflow-hidden bg-[#0a0a0a]">
-        <LandingView onEnter={enterApp} />
-        {/* Small "skip" link in the corner for returning users */}
-        <button
-          onClick={enterApp}
-          className="absolute top-4 right-4 z-50 text-[11px] text-white/40 hover:text-white/70 transition-colors"
-          aria-label="Skip and enter the app"
-        >
-          Skip →
-        </button>
+      <main className="relative h-[100dvh] w-full overflow-hidden bg-[#050505] flex items-center justify-center">
+        <div className="relative h-full w-full max-w-[480px] overflow-hidden bg-[#0a0a0a] lg:rounded-2xl lg:h-[92vh] lg:max-h-[920px] lg:border lg:border-white/10">
+          <LandingView onEnter={enterApp} />
+          <button
+            onClick={enterApp}
+            className="absolute top-4 right-4 z-50 text-[11px] text-white/40 hover:text-white/70 transition-colors"
+            aria-label="Skip and enter the app"
+          >
+            Skip →
+          </button>
+        </div>
       </main>
     );
   }
 
   return (
-    <main className="relative h-[100dvh] w-full overflow-hidden bg-[#0a0a0a]">
+    <main className="relative h-[100dvh] w-full overflow-hidden bg-[#050505] flex items-center justify-center">
+     {/* Desktop wrapper — centers a phone-width column on large screens */}
+     <div className="relative h-full w-full max-w-[480px] overflow-hidden bg-[#0a0a0a] sm:shadow-2xl sm:shadow-black/50 sm:rounded-none lg:rounded-2xl lg:h-[92vh] lg:max-h-[920px] lg:border lg:border-white/10">
       {/* Floating buttons: DM + Sign out + Protected + About */}
       <div className="absolute top-3 right-3 z-40 flex items-center gap-1.5">
         {me && (
@@ -491,6 +494,8 @@ export default function Home() {
           </div>
         </div>
       )}
+
+     </div>
     </main>
   );
 }

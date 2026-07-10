@@ -11,7 +11,7 @@
  */
 
 const MAX_DURATION_SECONDS = 7;
-const MAX_FILE_SIZE_MB = 10;
+const MAX_FILE_SIZE_MB = 15;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
 export interface VideoValidationResult {

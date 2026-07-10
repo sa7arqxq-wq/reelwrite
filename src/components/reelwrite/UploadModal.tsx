@@ -700,7 +700,7 @@ export function UploadModal({
                     )}
                   </label>
                   <p className="text-[10px] text-white/40">
-                    Upload any video that&apos;s <strong>7 seconds or shorter</strong> and <strong>10MB or smaller</strong>.
+                    Upload any video that&apos;s <strong>7 seconds or shorter</strong> and <strong>15MB or smaller</strong>.
                     Any format works (MP4, MOV, WEBM, etc). The video loops as your reel background with the hook text overlaid.
                   </p>
                 </div>

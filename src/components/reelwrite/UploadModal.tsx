@@ -26,12 +26,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Timer, Sparkles, Loader2, Check, Wand2, ImageIcon, Link2, Video, Film } from "lucide-react";
+import { Timer, Sparkles, Loader2, Check, Wand2, ImageIcon, Link2, Film } from "lucide-react";
 import { MOODS, MOOD_LIST, type Mood } from "@/lib/moods";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { compressImage, validateImageUrl } from "@/lib/image-compress";
 import { validateAndReadVideo } from "@/lib/video-validate";
+import { VideoTrimmer } from "./VideoTrimmer";
 
 interface UploadModalProps {
   open: boolean;
@@ -652,56 +653,46 @@ export function UploadModal({
                 </div>
               )}
 
-              {/* Video background controls */}
+              {/* Video background controls — with trimmer */}
               {background === "video" && (
                 <div className="space-y-2 pt-1">
                   {videoData ? (
-                    <div className="relative rounded-lg overflow-hidden border border-white/10">
-                      <video
-                        src={videoData}
-                        className="w-full h-32 object-cover"
-                        autoPlay
-                        loop
-                        muted
-                        playsInline
-                      />
-                      {videoMeta && (
-                        <div className="absolute top-1.5 left-1.5 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-bold text-amber-400">
-                          {videoMeta.duration.toFixed(1)}s · {videoMeta.sizeMB.toFixed(1)}MB
-                        </div>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => { setVideoData(""); setVideoMeta(null); }}
-                        className="absolute top-1.5 right-1.5 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-bold text-white hover:bg-rose-500"
-                      >
-                        Remove
-                      </button>
+                    <div className="space-y-2">
+                      <div className="relative rounded-lg overflow-hidden border border-white/10">
+                        <video
+                          src={videoData}
+                          className="w-full h-32 object-cover"
+                          autoPlay
+                          loop
+                          muted
+                          playsInline
+                        />
+                        {videoMeta && (
+                          <div className="absolute top-1.5 left-1.5 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-bold text-amber-400">
+                            ✂️ {videoMeta.duration.toFixed(1)}s · {videoMeta.sizeMB.toFixed(1)}MB
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => { setVideoData(""); setVideoMeta(null); }}
+                          className="absolute top-1.5 right-1.5 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-bold text-white hover:bg-rose-500"
+                        >
+                          Remove
+                        </button>
+                      </div>
                     </div>
-                  ) : null}
-                  <label className={cn(
-                    "flex items-center justify-center gap-1.5 rounded-lg py-2.5 text-xs font-semibold transition-colors cursor-pointer",
-                    "bg-amber-400/15 text-amber-400 hover:bg-amber-400/25",
-                    videoUploading && "opacity-50 pointer-events-none"
-                  )}>
-                    <input
-                      type="file"
-                      accept="video/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleVideoUpload(file);
+                  ) : (
+                    <VideoTrimmer
+                      onTrimmed={(dataUrl, dur, sizeMB) => {
+                        setVideoData(dataUrl);
+                        setVideoMeta({ duration: dur, sizeMB });
                       }}
+                      onCancel={() => { setBackground("mood"); }}
                     />
-                    {videoUploading ? (
-                      <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Processing video…</>
-                    ) : (
-                      <><Film className="w-3.5 h-3.5" /> Upload 7-second video from phone</>
-                    )}
-                  </label>
+                  )}
                   <p className="text-[10px] text-white/40">
-                    Upload any video that&apos;s <strong>7 seconds or shorter</strong> and <strong>15MB or smaller</strong>.
-                    Any format works (MP4, MOV, WEBM, etc). The video loops as your reel background with the hook text overlaid.
+                    Upload any video — the app trims it to exactly 7 seconds of your choice.
+                    Any format, any length (up to 50MB).
                   </p>
                 </div>
               )}

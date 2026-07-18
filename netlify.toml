@@ -1,6 +1,6 @@
 [build]
-  command = "npm install && npx prisma generate && npm run build"
-  publish = ".next"
+  command = "npm install && npx prisma generate && npx @opennextjs/aws build"
+  publish = ".open-next"
 
 [build.environment]
   NODE_VERSION = "20"
